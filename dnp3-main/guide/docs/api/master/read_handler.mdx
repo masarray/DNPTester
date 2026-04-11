@@ -1,0 +1,110 @@
+---
+id: read_handler
+title: ReadHandler
+sidebar_label: ReadHandler
+slug: /api/master/read_handler
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The `ReadHandler` interface receives measurement values from the outstation. Specify it for each association; it's invoked for both unsolicited responses and READ responses.
+
+When a response is parsed and determined to carry measurement data, `ReadHandler` callbacks are executed in the following order:
+
+1. `ReadHandler::begin_fragment`
+2. `ReadHandler::handle_<TYPE>` for each object header in the message
+3. `ReadHandler::end_fragment`
+
+The begin/end methods provide useful information, including:
+
+* The full header of the response
+* Context regarding what triggered the response, such as unsolicited, startup integrity scan, periodic poll, etc.
+
+:::tip
+To determine if a measurement is a static value or an event, use the `HeaderInfo::is_event` field.
+:::
+
+Each value has a set of associated flags. You can check the presence of a flag by using the `Flags::value` field and comparing
+it with the constants defined in `Flag`.
+
+:::tip
+It's common to maintain a list of measurement values in your `ReadHandler` implementation. You can then use the `endFragment` method as a trigger to publish them.
+Since responses may consist of multiple fragments, you can inspect the `ResponseHeader.Control.Fin` field to determine if the current fragment is the final fragment
+in a response series.
+:::
+
+Use `MasterChannel::read_with_handler()` to send a read request with a specific `ReadHandler`. Response data goes to the specified handler instead of the association's default handler.
+
+## Device Attributes
+
+The `ReadHandler` also has callbacks for receiving device attributes (Group 0) from the outstation. The Rust trait uses
+a single method and passes an enum representing the various types of values. The bindings use a distinct method for each
+type of value, i.e. one for strings, another for unsigned integers, etc.
+
+All of the callbacks provide an enum allowing you to determine if the received attribute is from the default set specified by
+DNP.org (i.e. set "0") or a privately defined set. The intent is that you never have to match variations numbers yourself
+unless you are dealing with data from a private set.
+
+:::tip
+The default set includes a number of signed integer attributes that are mapped to boolean values, e.g.:
+
+* Group 0 Variation 231 - Support for analog input events
+
+* Group 0 Variation 237 - Support for binary input events
+
+Instead of providing you with the raw integer, the library converts it to a bool for convenience.
+:::
+
+## Examples
+
+The example below shows an implementation of a `ReadHandler` that prints received values to the console. The Rust and C#
+examples can print all of the received device attributes. The examples for the other bindings only demonstrate receiving
+string attributes.
+
+<Tabs
+groupId="language"
+defaultValue="Rust"
+values={[
+{label: 'Rust', value: 'Rust'},
+{label: 'C', value: 'C'},
+{label: 'C++', value: 'C++'},
+{label: 'Java', value: 'Java'},
+{label: 'C#', value: 'C#'},
+]}>
+<TabItem value="Rust">
+
+```rust
+{{#include ../examples/master/src/main.rs:read_handler}}
+```
+
+</TabItem>
+<TabItem value="C">
+
+```c
+{{#include ../ffi/bindings/c/master_example.c:read_handler}}
+```
+
+</TabItem>
+<TabItem value="C++">
+
+```cpp
+{{#include ../ffi/bindings/c/master_example.cpp:read_handler}}
+```
+
+</TabItem>
+<TabItem value="Java">
+
+```java
+{{#include ../ffi/bindings/java/examples/src/main/java/io/stepfunc/dnp3/examples/MasterExample.java:read_handler}}
+```
+
+</TabItem>
+<TabItem value="C#">
+
+```csharp
+{{#include ../ffi/bindings/dotnet/examples/master/Program.cs:read_handler}}
+```
+
+</TabItem>
+</Tabs>

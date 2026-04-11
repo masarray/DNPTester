@@ -1,0 +1,90 @@
+---
+id: tcp_client
+title: TCP Client
+sidebar_label: TCP Client
+slug: /api/master/tcp_client
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+A `MasterChannel` presents the same interface regardless of transport. Create a TCP client channel using the runtime, configuration data, and a connection status callback.
+
+<Tabs
+groupId="language"
+defaultValue="Rust"
+values={[
+{label: 'Rust', value: 'Rust'},
+{label: 'C', value: 'C'},
+{label: 'C++', value: 'C++'},
+{label: 'Java', value: 'Java'},
+{label: 'C#', value: 'C#'},
+]}>
+<TabItem value="Rust">
+
+```rust
+{{#include ../examples/master/src/main.rs:create_master_tcp_channel}}
+```
+
+:::note
+The function is called within the context of the Tokio runtime, and is therefore implicit in Rust.
+:::
+
+</TabItem>
+<TabItem value="C">
+
+```c
+{{#include ../ffi/bindings/c/master_example.c:create_master_tcp_channel}}
+// check error
+```
+
+</TabItem>
+<TabItem value="C++">
+
+```cpp
+{{#include ../ffi/bindings/c/master_example.cpp:create_master_tcp_channel}}
+```
+
+</TabItem>
+<TabItem value="Java">
+
+```java
+{{#include ../ffi/bindings/java/examples/src/main/java/io/stepfunc/dnp3/examples/MasterExample.java:create_tcp_channel}}
+```
+
+</TabItem>
+<TabItem value="C#">
+
+```csharp
+{{#include ../ffi/bindings/dotnet/examples/master/Program.cs:create_tcp_channel}}
+```
+
+</TabItem>
+</Tabs>
+
+## Enabling
+
+A `MasterChannel` won't communicate until you call `enable`. This lets you configure all associations first. Call `disable` to put the channel in an inactive state.
+
+## LinkErrorMode
+
+The `LinkErrorMode` controls what happens if it detects a framing error at the link-layer. TCP is a lossless transport, so the default behavior is to
+close the connection. However, you can treat a TCP channel like a serial port by changing the setting to `LinkErrorMode::Discard`.
+
+## EndpointList
+
+An `EndpointList` contains remote endpoints the master will try to connect to. It must have at least one entry; additional entries serve as backups. The channel round-robins through the list until connected. Each endpoint is a `<host>:<port>` tuple where "host" is:
+
+* IPv4 address
+* IPv6 address
+* Domain name
+
+## ConnectStrategy
+
+The `ConnectStrategy` controls the rate at which the master retries failed connection attempts. The master uses exponential backoff when attempting to establish
+a connection. The delay between attempts doubles from `minConnectDelay` up to `maxConnectDelay`. If a connection fails after previously connecting, it will
+wait `reconnectDelay` before the next attempt.
+
+## ClientStateListener
+
+The `ClientStateListener` interface has a single callback to inform the application about the state of connection.

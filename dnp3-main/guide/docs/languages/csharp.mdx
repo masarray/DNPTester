@@ -1,0 +1,74 @@
+---
+id: c_sharp
+title: C# Bindings
+sidebar_label: C#
+slug: /c_sharp
+---
+
+import useBaseUrl from '@docusaurus/useBaseUrl';
+
+We distribute the C# bindings as a [Nuget package](https://www.nuget.org/packages/dnp3). Internally, the C API is called using [P/Invoke](https://docs.microsoft.com/en-us/dotnet/standard/native-interop/pinvoke)
+The bindings are .NET Standard 2.0 compatible and include platform-specific shared libraries that are automatically loaded by the .NET runtime.
+
+Shared libraries for the following platforms are included in the Nuget package:
+
+- Windows x64 (Windows 7+)
+- Windows x86 (Windows 7+)
+- Linux x64 (GLIBC and MUSL variants)
+- Linux AArch64 (GLIBC and MUSL variants)
+- Linux ARMv6hf (GLIBC and MUSL variants)
+- MacOS x64 (MacOS 10.7+, Lion+)
+
+:::warning
+MacOS x64 libraries are included in the package but are not officially supported. They are useful for developers using MacOS, but
+are not supported in production.
+:::
+
+## Supported .NET versions
+
+The library targets .NET Standard 2.0, meaning it supports .NET Core 2.0+, .NET 5+ and .NET Framework 4.6.1+ (although at least 4.7.2 is recommended).
+A complete compatibility table is available on [Microsoft website](https://docs.microsoft.com/en-us/dotnet/standard/net-standard?tabs=net-standard-2-0).
+
+:::info
+On .NET Framework, you need to specify the platform you are targeting. The library currently does not support the `AnyCPU` platform. You need to
+set the platform to either `x64` or `x86` in order for the MSBuild script to properly copy the DLL in the build directory.
+
+For .NET Core and .NET 5, the proper DLL is automatically loaded even with the `AnyCPU` platform.
+:::
+
+## Mapping
+
+C# is an object-oriented language that supports all the abstract patterns modeled in the code generator. Here's what you need to know.
+
+### Errors
+
+C API errors are transformed into exceptions that contain the error `enum`.
+
+:::warning
+Uncaught exceptions thrown in callbacks will terminate the program. Your code should always wrap callback logic with `try/catch` syntax if there's a chance that the callback will throw.
+:::
+
+### Iterators
+
+The code generator transforms iterators into `ICollection<T>`. This means that the collections returned by callbacks may be used outside the callback. For example, you can send them to another thread for processing.
+
+### Structs
+
+Native structs are mapped to C# classes. They have public member visibility, and the constructor ensures that all values without a reasonable default are initialized.
+Each field has a `With<FieldName>` method that sets the field and returns the struct for chaining operations.
+
+### Classes
+
+Abstract classes are mapped to C# classes. They have a private pointer to the underlying native resource. There are two types of generated classes in C#:
+* Generated classes that only have a private finalizer: These are automatically garbage collected, while native resources are deallocated in the class's finalize method. These
+types of classes are typically builder objects such as `Commands`, `Request`, and `AddressFilter`.
+* Generated classes that also provide a public `Shutdown` method: These represent long-lived resources such as `Runtime`, `Master`, or `TCPServer`. They map to an asynchronous
+Rust task executing on the Tokio runtime. The `Shutdown` method lets you precisely control when the resource/task will stop.
+
+### Asynchronous Methods
+
+Abstract asynchronous methods are transformed into methods that return `Task<T>`. C# Tasks are flexible and can be consumed in different ways:
+
+* Synchronous applications can just call `Task.Result` to block for the value. An exception will be thrown if the task errors.
+* Asynchronous methods can `await` the completion of the task.
+* Synchronous methods may also use the various combinators like `Task.ContinueWith` to process the result asynchronously.

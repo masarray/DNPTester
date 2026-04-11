@@ -1,0 +1,114 @@
+<Window x:Class="Dnp3MasterTester.ConnectionSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Connection Setup"
+        Width="720"
+        Height="620"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Margin="0,0,0,12">
+            <TextBlock Text="Connection Setup"
+                       FontSize="18"
+                       FontWeight="Bold" />
+            <TextBlock Margin="0,6,0,0"
+                       Foreground="{StaticResource TextMutedBrush}"
+                       Text="Edit transport, addresses, timeout, and event polling settings for the current DNP3 session."
+                       TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Style="{StaticResource CardBorderStyle}"
+                Padding="16">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,10">
+                    <TextBlock Text="Polling Profile" />
+                    <ComboBox ItemsSource="{Binding PollingProfiles}"
+                              SelectedItem="{Binding Settings.PollingProfile}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,10">
+                    <TextBlock Text="Transport" />
+                    <ComboBox ItemsSource="{Binding TransportTypes}"
+                              SelectedItem="{Binding Settings.Transport}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,10">
+                    <TextBlock Text="Remote Endpoint" />
+                    <TextBox Text="{Binding Settings.Endpoint, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,10,10">
+                    <TextBlock Text="Serial Port" />
+                    <TextBox Text="{Binding Settings.SerialPort, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,10">
+                    <TextBlock Text="Request Timeout (s)" />
+                    <TextBox Text="{Binding Settings.RequestTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,10,10">
+                    <TextBlock Text="Master Address" />
+                    <TextBox Text="{Binding Settings.MasterAddress, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,0,0,10">
+                    <TextBlock Text="Outstation Address" />
+                    <TextBox Text="{Binding Settings.OutstationAddress, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,10,10">
+                    <TextBlock Text="Fast Event Poll (s)" />
+                    <TextBox Text="{Binding Settings.EventPollSeconds, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,0,0,10">
+                    <TextBlock Text="Static Refresh (s)" />
+                    <TextBox Text="{Binding Settings.StaticRefreshSeconds, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal">
+                    <CheckBox Margin="0,8,16,0" IsChecked="{Binding Settings.EnableStartupIntegrity}" Content="Startup Integrity" />
+                    <CheckBox Margin="0,8,16,0" IsChecked="{Binding Settings.EnableSlowStaticRefresh}" Content="Slow Static Refresh" />
+                    <CheckBox Margin="0,8,16,0" IsChecked="{Binding Settings.EnableAutoEventScan}" Content="Auto Event Scan on IIN" />
+                    <CheckBox Margin="0,8,0,0" IsChecked="{Binding Settings.EnableUnsolicited}" Content="Enable Unsolicited" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,12,0,0">
+            <Button Width="90"
+                    Margin="0,0,8,0"
+                    IsCancel="True"
+                    Content="Close" />
+            <Button Width="90"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    IsDefault="True"
+                    Content="Done"
+                    Click="DoneButton_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

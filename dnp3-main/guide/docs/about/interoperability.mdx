@@ -1,0 +1,46 @@
+---
+id: interop
+title: Interoperability
+sidebar_label: Interoperability
+slug: /interop
+---
+
+DNP3 defines four subset levels of interoperability:
+
+* `Level 1`: This is the minimum functionality that a master or outstation must implement to make it DNP3 compliant. Functionality will be quite basic and is only intended for a small field device.
+* `Level 2`: This adds several function codes and objects in order to support a simple RTU or data concentrator.
+* `Level 3`: This adds additional function codes and objects, most notably enable/disable of unsolicited reporting, in order to support complex RTUs/concentrators. 
+* `Level 4`: This adds rarely-used features, such as floating-point analog variations, double-bit binary inputs, and device attributes.
+Features like file transfer, datasets, and secure authentication do not belong to any subset level.
+
+
+### Current Support: Level 3
+
+Our library is currently `Level 3` compliant for both master and outstation. `Level 4` compliance is planned for a future release. We already support a number of `Level 4` features, along with features outside subset levels:
+
+| Feature                   | Objects                                                 |   Level    |
+|---------------------------|---------------------------------------------------------|:----------:|
+| Device Attributes         |  Group 0                                                |     4      |
+| Double-bit Binary Inputs  |  Groups 3 & 4                                           |     4      |
+| Floating-point AI/AO      |  Float/double variations in groups  30, 32, and 41      |     4      |
+| Analog Input Dead-bands   |  Group 34                                               |     4      |
+| BO/AO events              |  Groups 11 & 42                                         |     4      |
+| LAN time-synchronization  |  Group 50 Var 3                                         |     4      |
+| Self-address support      |  (link layer)                                           |     4      |
+| Octet strings (g110/111)  |  Groups 110 and 111                                     |     -      |
+| Master File Transfer      |  Group 70 - read file, get file info, read directory    |     -      |
+
+### Future Support
+
+The library will be level 4 compliant when we add AO/BO command events (groups 13 & 43).
+
+## Conformance Testing
+
+The DNP3 User Group publishes official conformance test procedures for outstations. These procedures validate all level 2 functionality. Procedures for level 3 conformance testing are currently under development by the user group.
+
+We created an internal implementation of these test procedures that we automatically run against the outstation implementation. We use these procedures to augment our own unit and integration tests to meet the conformance standards. You can find the HTML conformance test reports on our
+[Github Actions](https://github.com/stepfunc/dnp3/actions) CI.
+
+:::note
+The DNP User Group only certifies outstation devices as conforming to the specification, not libraries. Contact Step Function I/O if you would like to engage us to conduct conformance testing for your outstation product.
+:::

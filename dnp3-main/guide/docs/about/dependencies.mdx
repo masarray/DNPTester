@@ -1,0 +1,40 @@
+---
+id: dependencies
+title: Open Source Dependencies
+sidebar_label: Dependency Licenses
+slug: /dependencies
+---
+
+import useBaseUrl from '@docusaurus/useBaseUrl';
+import sitedata from '../../sitedata.json'
+
+Rust's package manager (`cargo`) makes it easy to work with external dependencies. This is great for development, but means Rust applications and libraries tend to have many dependencies.
+
+Our library depends directly on a handful of third-party libraries, but those pull in dozens of their own. Here's how we manage dependencies.
+
+## Dependency Allowlisting
+
+We use a dependency allowlist to ensure that we never incorporate dependencies into our builds unless they are manually approved. During each CI build, the following
+checks are performed:
+
+* Check every dependency against the allowlist. Our CI packaging will fail if a dependency is added with a license that has not been pre-approved.
+* Produce a license report called `third-party-licenses.txt` that consolidates all the dependency and license information. We include this document in all of
+our binary distributions.
+* Ignore projects that are 100% copyrighted by Step Function I/O, e.g. the library itself and some dependencies we share with our other protocol libraries.
+
+:::note
+The license report file differs slightly for the Java library as it incorporates some additional components for the JNI functionality.
+:::
+
+
+## Proprietary Compatible
+
+All dependencies of the library have licenses that are both mutually compatible and compatible with commercial/proprietary products. We don't allow the
+incorporation of strong copyleft licenses such as the GPL. You can see a complete list of allowed dependencies and licenses in <a href={`${sitedata.github_url}/blob/${sitedata.version}/allowed.json`}>allowed.json</a>.
+
+## Disclaimer
+
+We've included this information because we take open source license compliance seriously. That said, this information and the `third-party-licenses.txt` file are provided for your reference and do not constitute legal advice. Treat this information as a starting point so you can perform your own due diligence.
+
+
+

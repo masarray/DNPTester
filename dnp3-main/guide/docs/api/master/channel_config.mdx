@@ -1,0 +1,71 @@
+---
+id: channel_config
+title: MasterChannelConfig
+sidebar_label: MasterChannelConfig
+slug: /api/master/channel/config
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The `MasterChannelConfig` struct contains the following generic settings that are common to all communication channels:
+
+* Master station address (different addresses may be used for different channels)
+* Initial decoding level
+* Transmit and receive buffer sizes
+
+:::note
+The timeout for responses is configured for each association individually. This is useful if the outstation is a gateway service with varying latency.
+:::
+
+The constructor takes the master address and has reasonable defaults for all other settings. The default response timeout is 5 seconds; you may need to increase it for high-latency communication links. You should only need to adjust the default buffer size of 2,048 bytes if an outstation has a non-standard configuration.
+
+<Tabs
+groupId="language"
+defaultValue="Rust"
+values={[
+{label: 'Rust', value: 'Rust'},
+{label: 'C', value: 'C'},
+{label: 'C++', value: 'C++'},
+{label: 'Java', value: 'Java'},
+{label: 'C#', value: 'C#'},
+]}>
+<TabItem value="Rust">
+
+```rust
+{{#include ../examples/master/src/main.rs:master_channel_config}}
+```
+
+</TabItem>
+<TabItem value="C">
+
+```c
+{{#include ../ffi/bindings/c/master_example.c:master_channel_config}}
+```
+
+</TabItem>
+<TabItem value="C++">
+
+```cpp
+{{#include ../ffi/bindings/c/master_example.cpp:master_channel_config}}
+```
+
+</TabItem>
+<TabItem value="Java">
+
+```java
+{{#include ../ffi/bindings/java/examples/src/main/java/io/stepfunc/dnp3/examples/MasterExample.java:master_channel_config}}
+```
+
+</TabItem>
+<TabItem value="C#">
+
+```csharp
+{{#include ../ffi/bindings/dotnet/examples/master/Program.cs:master_channel_config}}
+```
+
+</TabItem>
+</Tabs>
+
+
+

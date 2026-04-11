@@ -1,0 +1,136 @@
+---
+id: configuration
+title: Outstation Configuration
+sidebar_label: OutstationConfig
+slug: /api/outstation/configuration
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+You create outstations using three types of components:
+
+* Static configuration values
+* Callback interfaces
+* Transport-specific configuration (e.g., TCP vs. serial parameters)
+
+The following static configuration is required to create an outstation.
+
+### OutstationConfig
+
+`OutstationConfig` contains parameters that modify outstation behavior. See the generated API documentation for field definitions. All fields have defaults except the master and outstation link addresses. Defaults aren't optimized for every use case—you may need to adjust timeouts for higher latency links.
+
+<Tabs
+groupId="language"
+defaultValue="Rust"
+values={[
+{label: 'Rust', value: 'Rust'},
+{label: 'C', value: 'C'},
+{label: 'C++', value: 'C++'},
+{label: 'Java', value: 'Java'},
+{label: 'C#', value: 'C#'},
+]}>
+<TabItem value="Rust">
+
+```rust
+{{#include ../examples/outstation/src/main.rs:outstation_config}}
+```
+
+</TabItem>
+<TabItem value="C">
+
+```c
+{{#include ../ffi/bindings/c/outstation_example.c:create_outstation_config}}
+```
+
+</TabItem>
+<TabItem value="C++">
+
+```cpp
+{{#include ../ffi/bindings/c/outstation_example.cpp:create_outstation_config}}
+```
+
+</TabItem>
+<TabItem value="Java">
+
+```java
+{{#include ../ffi/bindings/java/examples/src/main/java/io/stepfunc/dnp3/examples/OutstationExample.java:outstation_config}}
+```
+
+</TabItem>
+<TabItem value="C#">
+
+```csharp
+{{#include ../ffi/bindings/dotnet/examples/outstation/Program.cs:outstation_config}}
+```
+
+</TabItem>
+</Tabs>
+
+### EventBufferConfig
+
+
+`EventBufferConfig` controls the number of events buffered for each type. Space is pre-allocated during initialization. When a buffer fills, the oldest event is discarded and the outstation asserts IIN 2.3 (Event Buffer Overflow).
+
+There's a tradeoff between preserving events and memory/CPU usage. Consider these factors when sizing buffers:
+
+* How many measurements the outstation database contains
+* How often the measurements change
+* How often and for how long the master may be disconnected or otherwise unable to empty the event queues via READ or unsolicited reporting
+* How important it is to preserve events for a particular type. 
+
+:::tip
+Not all events are created equal. For example, it may be important to capture every binary state transition, while missing an analog or counter value might not matter at all.
+:::
+
+<Tabs
+groupId="language"
+defaultValue="Rust"
+values={[
+    {label: 'Rust', value: 'Rust'},
+    {label: 'C', value: 'C'},
+    {label: 'C++', value: 'C++'},
+    {label: 'Java', value: 'Java'},
+    {label: 'C#', value: 'C#'},
+]}>
+<TabItem value="Rust">
+
+```rust
+{{#include ../examples/outstation/src/main.rs:event_buffer_config}}
+```
+
+</TabItem>
+<TabItem value="C">
+
+```c
+{{#include ../ffi/bindings/c/outstation_example.c:event_buffer_config}}
+```
+
+</TabItem>
+<TabItem value="C++">
+
+```cpp
+{{#include ../ffi/bindings/c/outstation_example.cpp:event_buffer_config}}
+```
+
+</TabItem>
+<TabItem value="Java">
+
+```java
+{{#include ../ffi/bindings/java/examples/src/main/java/io/stepfunc/dnp3/examples/OutstationExample.java:event_buffer_config}}
+```
+
+</TabItem>
+<TabItem value="C#">
+
+```csharp
+{{#include ../ffi/bindings/dotnet/examples/outstation/Program.cs:event_buffer_config}}
+```
+
+</TabItem>
+</Tabs>
+
+:::note
+Setting the event count to `0` for a type disables event recording and reporting for that type.
+:::
+

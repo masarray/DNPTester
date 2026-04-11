@@ -1,0 +1,183 @@
+---
+id: runtime
+title: Runtime
+sidebar_label: Runtime
+slug: /api/runtime
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Rust's asynchronous programming model is a form of [cooperative multitasking](https://docs.rs/tokio/1.0.2/tokio/task/index.html). Once a task gets to a point where it would typically block, such as reading from a socket, execution is instead released back to an executor so that another task may run. This lets a pool of worker threads inside the executor efficiently execute thousands of asynchronous tasks concurrently without the overhead of per-task call stacks or thread context-switching.
+
+Rust supports asynchronous programming using 'async' functions and 'async/await' syntax. The Rust compiler transforms synchronous-looking code into state machines that are just as efficient as what can be written by hand. Although Rust has this capability built into the compiler, it doesn't include a default runtime to execute the asynchronous programs. Instead, you are free to pick the runtime as an external library.
+
+The DNP3 library runs on top of the [Tokio](https://tokio.rs/) runtime, providing a state-of-the-art scheduler and platform-agnostic networking APIs. The OS-specific mechanisms vary by platform, for example, *epoll* on Linux and *IOCP* on Windows.
+
+Tokio is a modern evolution of libraries like [libuv (C)](https://libuv.org/) and [ASIO (C++)](https://think-async.com/Asio/). It leverages Rust's thread and memory safety to deliver asynchronous programs that are not only incredibly fast, but also correct. This is extremely important since it is quite difficult to write correct asynchronous software in C/C++ due to the need to manually reason object lifetimes in callbacks.
+
+## Lifetime
+
+Create a `Runtime` before any communication can take place. It's a shared resource for multiple sessions, typically created just after initializing logging and shut down last when exiting.
+
+:::note
+Rust users can share the runtime with other libraries that also use Tokio. The bindings don't currently support sharing a runtime, but this will be possible in a future release.
+:::
+
+## Examples
+
+<Tabs
+groupId="language"
+defaultValue="Rust"
+values={[
+{label: 'Rust', value: 'Rust'},
+{label: 'C', value: 'C'},
+{label: 'C++', value: 'C++'},
+{label: 'Java', value: 'Java'},
+{label: 'C#', value: 'C#'},
+]}>
+<TabItem value="Rust">
+
+```rust
+{{#include ../examples/master/src/main.rs:runtime_init}}
+    // do things within the context of the runtime
+    // it is automatically shut down when this async fn returns
+}
+```
+
+</TabItem>
+<TabItem value="C">
+
+```c
+{{#include ../ffi/bindings/c/master_example.c:runtime_create}}
+```
+
+</TabItem>
+<TabItem value="C++">
+
+```cpp
+{{#include ../ffi/bindings/c/master_example.cpp:runtime_create}}
+```
+
+</TabItem>
+<TabItem value="Java">
+
+```java
+{{#include ../ffi/bindings/java/examples/src/main/java/io/stepfunc/dnp3/examples/MasterExample.java:runtime_config}}
+
+{{#include ../ffi/bindings/java/examples/src/main/java/io/stepfunc/dnp3/examples/MasterExample.java:runtime}}
+```
+</TabItem>
+<TabItem value="C#">
+
+```csharp
+{{#include ../ffi/bindings/dotnet/examples/master/Program.cs:runtime_init}}
+```
+
+</TabItem>
+</Tabs>
+
+:::tip
+Set the number of runtime threads to `0` to default to the number of system cores. This provides a safe default that will lead to good multi-core utilization.
+:::
+
+## Callbacks
+
+The runtime's thread pool invokes callbacks from the library to user code. If you block during a callback, an entire thread is made unavailable for task execution. If all threads are blocked, no communication sessions will execute until
+a thread becomes unblocked.
+
+For example, when you receive a log message via a callback, a synchronous call to write the message to a file will block a thread. If this frequently occurs on all your pool threads, it can cause poor throughput or even task starvation. 
+
+Avoid blocking in callbacks whenever possible. Defer blocking calls to dedicated worker threads, such as a separate thread that writes log messages to file.
+
+
+
+:::tip
+If you have a case where some blocking is unavoidable, set the number of worker threads to a multiple of the number of system cores, such as 2x or 3x.
+:::
+
+## Shutdown
+
+Shutting down the runtime is typically one of the last operations your program should perform before exiting. The call
+to shutdown is synchronous and when it completes you are assured there are no longer any tasks running and all of the
+worker threads have been joined.
+
+:::warning
+A blocked worker thread can cause shutdown to deadlock. For example, if a communication channel makes a callback to user code
+that permanently blocks, `shutdown` will cause a deadlock.
+
+If you cannot ensure a clean shutdown, use `Runtime.set_shutdown_timeout(..)` to set an upper time limit. Call this method immediately after creating the Runtime.
+
+**Shutting down the runtime using a timeout can leak memory as worker threads will be aborted if the timeout occurs. Only
+use this method if you are exiting the process anyway.**
+:::
+
+### Logging
+
+Both the creation and the shutdown of the `Runtime` are logged in the bindings:
+
+```
+Jan 12 16:16:42.004  INFO creating runtime with 24 threads
+
+.......
+
+Jan 12 16:36:53.832  INFO beginning runtime shutdown (no timeout)
+Jan 12 16:36:53.838  INFO runtime shutdown complete
+```
+
+### Examples
+
+<Tabs
+groupId="language"
+defaultValue="Rust"
+values={[
+{label: 'Rust', value: 'Rust'},
+{label: 'C', value: 'C'},
+{label: 'C++', value: 'C++'},
+{label: 'Java', value: 'Java'},
+{label: 'C#', value: 'C#'},
+]}>
+<TabItem value="Rust">
+
+:::note
+Runtime shutdown is implicit in Rust when tokio::main returns.
+:::
+
+</TabItem>
+<TabItem value="C">
+
+```c
+{{#include ../ffi/bindings/c/master_example.c:runtime_destroy}}
+```
+
+</TabItem>
+<TabItem value="C++">
+
+:::note
+Runtime shutdown is implicit when the runtime object gets destroyed.
+:::
+
+</TabItem>
+<TabItem value="Java">
+
+```java
+{{#include ../ffi/bindings/java/examples/src/main/java/io/stepfunc/dnp3/examples/MasterExample.java:runtime_shutdown}}
+```
+
+:::note
+If you don't call `Shutdown` before exiting, the JVM will shutdown the runtime in its finalize method. However, garbage collection is not deterministic, so your program may never properly exit. Always explicitly shut down the runtime before exiting.
+:::
+
+</TabItem>
+<TabItem value="C#">
+
+```csharp
+{{#include ../ffi/bindings/dotnet/examples/master/Program.cs:runtime_shutdown}}
+```
+
+:::note
+If you don't call `Shutdown` before exiting, the .NET runtime will shut down the runtime in its finalizer. Always explicitly shut down the runtime instead of relying on this behavior.
+:::
+
+</TabItem>
+</Tabs>
