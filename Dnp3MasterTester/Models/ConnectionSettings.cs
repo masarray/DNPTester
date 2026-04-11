@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using dnp3;
 
 namespace Dnp3MasterTester.Models;
 
@@ -15,6 +16,12 @@ public sealed class ConnectionSettings : INotifyPropertyChanged
     private PollingProfileKind _pollingProfile = PollingProfileKind.BalancedScada;
     private string _endpoint = "127.0.0.1:20000";
     private string _serialPort = "COM1";
+    private uint _serialBaudRate = 9600;
+    private DataBits _serialDataBits = DataBits.Eight;
+    private StopBits _serialStopBits = StopBits.One;
+    private Parity _serialParity = Parity.None;
+    private FlowControl _serialFlowControl = FlowControl.None;
+    private int _serialOpenRetrySeconds = 5;
     private ushort _masterAddress = 1;
     private ushort _outstationAddress = 1024;
     private int _requestTimeoutSeconds = 5;
@@ -89,6 +96,42 @@ public sealed class ConnectionSettings : INotifyPropertyChanged
         set => SetProperty(ref _serialPort, value);
     }
 
+    public uint SerialBaudRate
+    {
+        get => _serialBaudRate;
+        set => SetProperty(ref _serialBaudRate, value);
+    }
+
+    public DataBits SerialDataBits
+    {
+        get => _serialDataBits;
+        set => SetProperty(ref _serialDataBits, value);
+    }
+
+    public StopBits SerialStopBits
+    {
+        get => _serialStopBits;
+        set => SetProperty(ref _serialStopBits, value);
+    }
+
+    public Parity SerialParity
+    {
+        get => _serialParity;
+        set => SetProperty(ref _serialParity, value);
+    }
+
+    public FlowControl SerialFlowControl
+    {
+        get => _serialFlowControl;
+        set => SetProperty(ref _serialFlowControl, value);
+    }
+
+    public int SerialOpenRetrySeconds
+    {
+        get => _serialOpenRetrySeconds;
+        set => SetProperty(ref _serialOpenRetrySeconds, value);
+    }
+
     public ushort MasterAddress
     {
         get => _masterAddress;
@@ -141,6 +184,79 @@ public sealed class ConnectionSettings : INotifyPropertyChanged
     {
         get => _enableSlowStaticRefresh;
         set => SetProperty(ref _enableSlowStaticRefresh, value);
+    }
+
+    public TimeSpan GetSerialOpenRetryDelay()
+    {
+        return TimeSpan.FromSeconds(Math.Max(1, SerialOpenRetrySeconds));
+    }
+
+    public string GetSerialSummary()
+    {
+        return $"{SerialPort} @ {SerialBaudRate} {SerialDataBits}/{SerialParity}/{SerialStopBits} Flow={SerialFlowControl}";
+    }
+
+    public IReadOnlyList<string> Validate()
+    {
+        var errors = new List<string>();
+
+        if (MasterAddress == 0)
+        {
+            errors.Add("Master address must be greater than 0.");
+        }
+
+        if (OutstationAddress == 0)
+        {
+            errors.Add("Outstation address must be greater than 0.");
+        }
+
+        if (RequestTimeoutSeconds <= 0)
+        {
+            errors.Add("Request timeout must be greater than 0 seconds.");
+        }
+
+        if (EventPollSeconds <= 0)
+        {
+            errors.Add("Fast event poll must be greater than 0 seconds.");
+        }
+
+        if (EnableSlowStaticRefresh && StaticRefreshSeconds <= 0)
+        {
+            errors.Add("Static refresh must be greater than 0 seconds when slow static refresh is enabled.");
+        }
+
+        switch (Transport)
+        {
+            case DnpTransportType.Tcp:
+                if (string.IsNullOrWhiteSpace(Endpoint))
+                {
+                    errors.Add("Remote endpoint is required for TCP transport.");
+                }
+                else if (!Endpoint.Contains(':', StringComparison.Ordinal))
+                {
+                    errors.Add("Remote endpoint must use host:port format for TCP transport.");
+                }
+                break;
+
+            case DnpTransportType.Serial:
+                if (string.IsNullOrWhiteSpace(SerialPort))
+                {
+                    errors.Add("Serial port is required for serial transport.");
+                }
+
+                if (SerialBaudRate == 0)
+                {
+                    errors.Add("Serial baud rate must be greater than 0.");
+                }
+
+                if (SerialOpenRetrySeconds <= 0)
+                {
+                    errors.Add("Serial port open retry must be greater than 0 seconds.");
+                }
+                break;
+        }
+
+        return errors;
     }
 
     private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

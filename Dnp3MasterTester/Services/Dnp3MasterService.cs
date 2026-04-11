@@ -50,8 +50,8 @@ public sealed class Dnp3MasterService : IDnp3MasterService
                         _runtime,
                         GetMasterChannelConfig(settings),
                         settings.SerialPort,
-                        new SerialSettings(),
-                        TimeSpan.FromSeconds(settings.RequestTimeoutSeconds),
+                        GetSerialSettings(settings),
+                        settings.GetSerialOpenRetryDelay(),
                         new PortStateListener(this)),
                     _ => MasterChannel.CreateTcpChannel(
                         _runtime,
@@ -195,6 +195,16 @@ public sealed class Dnp3MasterService : IDnp3MasterService
     {
         return new MasterChannelConfig(settings.MasterAddress)
             .WithDecodeLevel(DecodeLevel.Nothing().WithApplication(AppDecodeLevel.ObjectValues));
+    }
+
+    private static SerialSettings GetSerialSettings(ConnectionSettings settings)
+    {
+        return new SerialSettings()
+            .WithBaudRate(settings.SerialBaudRate)
+            .WithDataBits(settings.SerialDataBits)
+            .WithStopBits(settings.SerialStopBits)
+            .WithParity(settings.SerialParity)
+            .WithFlowControl(settings.SerialFlowControl);
     }
 
     private static AssociationConfig GetAssociationConfig(PollingProfile profile)

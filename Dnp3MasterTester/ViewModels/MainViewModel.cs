@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using Dnp3MasterTester.Models;
 using Dnp3MasterTester.Services;
+using dnp3;
 
 namespace Dnp3MasterTester.ViewModels;
 
@@ -25,6 +26,10 @@ public sealed class MainViewModel : ViewModelBase
         Settings = new ConnectionSettings();
         TransportTypes = Enum.GetValues(typeof(DnpTransportType)).Cast<DnpTransportType>().ToArray();
         PollingProfiles = Enum.GetValues(typeof(PollingProfileKind)).Cast<PollingProfileKind>().ToArray();
+        SerialDataBitOptions = Enum.GetValues(typeof(DataBits)).Cast<DataBits>().ToArray();
+        SerialStopBitOptions = Enum.GetValues(typeof(StopBits)).Cast<StopBits>().ToArray();
+        SerialParityOptions = Enum.GetValues(typeof(Parity)).Cast<Parity>().ToArray();
+        SerialFlowControlOptions = Enum.GetValues(typeof(FlowControl)).Cast<FlowControl>().ToArray();
         Settings.PropertyChanged += (_, _) => RaiseConnectionSummaryChanged();
 
         ConnectCommand = new RelayCommand(_ => ConnectAsync(), _ => !_isBusy && !_service.IsConnected);
@@ -47,14 +52,21 @@ public sealed class MainViewModel : ViewModelBase
     public ConnectionSettings Settings { get; }
     public IReadOnlyList<DnpTransportType> TransportTypes { get; }
     public IReadOnlyList<PollingProfileKind> PollingProfiles { get; }
+    public IReadOnlyList<DataBits> SerialDataBitOptions { get; }
+    public IReadOnlyList<StopBits> SerialStopBitOptions { get; }
+    public IReadOnlyList<Parity> SerialParityOptions { get; }
+    public IReadOnlyList<FlowControl> SerialFlowControlOptions { get; }
     public ObservableCollection<ValueViewerRow> ValueViewer { get; } = new();
     public ObservableCollection<EventLogEntry> EventLogs { get; } = new();
     public ObservableCollection<SoeEventRow> SoeAudit { get; } = new();
     public ObservableCollection<LinkTraceEntry> LinkTrace { get; } = new();
 
     public string ConnectionProfile => $"{Settings.Transport} / Master {Settings.MasterAddress} / Outstation {Settings.OutstationAddress}";
-    public string ConnectionTarget => Settings.Transport == DnpTransportType.Serial ? Settings.SerialPort : Settings.Endpoint;
+    public string ConnectionTarget => Settings.Transport == DnpTransportType.Serial ? Settings.GetSerialSummary() : Settings.Endpoint;
     public string PollingProfile => Settings.GetEffectivePollingProfile().Summary;
+    public string SerialProfile => Settings.GetSerialSummary();
+    public bool IsTcpTransport => Settings.Transport == DnpTransportType.Tcp;
+    public bool IsSerialTransport => Settings.Transport == DnpTransportType.Serial;
 
     public RelayCommand ConnectCommand { get; }
     public RelayCommand DisconnectCommand { get; }
@@ -86,7 +98,27 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    private Task ConnectAsync() => RunBusyAsync(() => _service.ConnectAsync(Settings));
+    private Task ConnectAsync() => RunBusyAsync(async () =>
+    {
+        var validationErrors = Settings.Validate();
+        if (validationErrors.Count != 0)
+        {
+            var detail = string.Join(" ", validationErrors);
+            ConnectionState = "Invalid Settings";
+            ConnectionDetail = detail;
+            InsertTop(EventLogs, new EventLogEntry
+            {
+                TimestampLocal = DateTime.Now,
+                EventType = "Validation Error",
+                Source = "UI",
+                Detail = detail,
+                Status = "Blocked"
+            });
+            return;
+        }
+
+        await _service.ConnectAsync(Settings);
+    });
     private Task DisconnectAsync() => RunBusyAsync(_service.DisconnectAsync);
     private Task IntegrityPollAsync() => RunBusyAsync(_service.RunIntegrityPollAsync);
     private Task EventPollAsync() => RunBusyAsync(_service.DemandEventPollAsync);
@@ -176,5 +208,8 @@ public sealed class MainViewModel : ViewModelBase
         RaisePropertyChanged(nameof(ConnectionProfile));
         RaisePropertyChanged(nameof(ConnectionTarget));
         RaisePropertyChanged(nameof(PollingProfile));
+        RaisePropertyChanged(nameof(SerialProfile));
+        RaisePropertyChanged(nameof(IsTcpTransport));
+        RaisePropertyChanged(nameof(IsSerialTransport));
     }
 }

@@ -157,6 +157,7 @@
                         <Run Text="{Binding Settings.EventPollSeconds}" />
                         <Run Text="s" />
                     </TextBlock>
+                    <TextBlock Margin="0,4,0,0" Text="{Binding SerialProfile}" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
         </Grid>
