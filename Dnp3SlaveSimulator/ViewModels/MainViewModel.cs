@@ -22,7 +22,7 @@ public sealed class MainViewModel : ViewModelBase
         _outstationService = new Dnp3OutstationService(AppendLog);
         _outstationService.StateChanged += state =>
         {
-            _dispatcher.Invoke(() =>
+            _ = _dispatcher.BeginInvoke(() =>
             {
                 RuntimeState = state;
                 StatusText = state;
@@ -42,6 +42,7 @@ public sealed class MainViewModel : ViewModelBase
         EventClassOptions = Enum.GetValues(typeof(Dnp3EventClassModel)).Cast<Dnp3EventClassModel>().ToArray();
         AnalogAnimationOptions = Enum.GetValues(typeof(AnalogAnimationKind)).Cast<AnalogAnimationKind>().ToArray();
         DiscreteAnimationOptions = Enum.GetValues(typeof(DiscreteAnimationKind)).Cast<DiscreteAnimationKind>().ToArray();
+        BinaryCommandBehaviorOptions = Enum.GetValues(typeof(BinaryCommandBehavior)).Cast<BinaryCommandBehavior>().ToArray();
 
         StartRuntimeCommand = new RelayCommand(_ => StartRuntime(), _ => !IsRunning && Signals.Count > 0);
         StopRuntimeCommand = new RelayCommand(_ => StopRuntime(), _ => IsRunning);
@@ -64,6 +65,7 @@ public sealed class MainViewModel : ViewModelBase
     public Dnp3EventClassModel[] EventClassOptions { get; }
     public AnalogAnimationKind[] AnalogAnimationOptions { get; }
     public DiscreteAnimationKind[] DiscreteAnimationOptions { get; }
+    public BinaryCommandBehavior[] BinaryCommandBehaviorOptions { get; }
 
     public RelayCommand StartRuntimeCommand { get; }
     public RelayCommand StopRuntimeCommand { get; }
@@ -162,7 +164,14 @@ public sealed class MainViewModel : ViewModelBase
             PointType = Dnp3OutstationPointType.BinaryOutputStatus,
             EventClass = Dnp3EventClassModel.Class1,
             BoolValue = false,
-            Notes = "Updated by CROB lifecycle"
+            Notes = "Updated by CROB lifecycle",
+            BinaryCommand = new BinaryCommandScenario
+            {
+                IsEnabled = true,
+                FeedbackIndex = 0,
+                Behavior = BinaryCommandBehavior.SuccessDelayedMatch,
+                FeedbackDelayMs = 800
+            }
         });
         Signals.Add(new Dnp3SimulatorSignal
         {
@@ -327,7 +336,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private void ApplyCommandedSignal(Dnp3SimulatorSignal commandedSignal)
     {
-        _dispatcher.Invoke(() =>
+        _ = _dispatcher.BeginInvoke(() =>
         {
             var match = Signals.FirstOrDefault(x => x.PointType == commandedSignal.PointType && x.Index == commandedSignal.Index);
             if (match is null)
@@ -346,7 +355,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private void AppendLog(RuntimeLogEntry entry)
     {
-        _dispatcher.Invoke(() =>
+        _ = _dispatcher.BeginInvoke(() =>
         {
             RuntimeLog.Insert(0, entry);
             while (RuntimeLog.Count > 500)

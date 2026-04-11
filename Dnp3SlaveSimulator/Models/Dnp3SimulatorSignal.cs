@@ -23,6 +23,7 @@ public sealed class Dnp3SimulatorSignal : ViewModelBase
     private string _notes = string.Empty;
     private string _lastCommandStatus = "-";
     private string _lastCommandDetail = "-";
+    private BinaryCommandScenario _binaryCommand = new();
     private DateTime _lastUpdatedLocal = DateTime.Now;
     private SignalEventTimestampState _eventTimestamp = SignalEventTimestampState.Invalid();
     private DateTime _nextAnimationAt = DateTime.Now;
@@ -46,12 +47,14 @@ public sealed class Dnp3SimulatorSignal : ViewModelBase
     public string Notes { get => _notes; set => SetProperty(ref _notes, value); }
     public string LastCommandStatus { get => _lastCommandStatus; set => SetProperty(ref _lastCommandStatus, value); }
     public string LastCommandDetail { get => _lastCommandDetail; set => SetProperty(ref _lastCommandDetail, value); }
+    public BinaryCommandScenario BinaryCommand { get => _binaryCommand; set => SetProperty(ref _binaryCommand, value); }
     public DateTime LastUpdatedLocal { get => _lastUpdatedLocal; set => SetProperty(ref _lastUpdatedLocal, value); }
     public SignalEventTimestampState EventTimestamp { get => _eventTimestamp; set => SetProperty(ref _eventTimestamp, value); }
 
     public bool IsBinaryLike => PointType is Dnp3OutstationPointType.BinaryInput or Dnp3OutstationPointType.BinaryOutputStatus;
     public bool IsAnalogLike => PointType is Dnp3OutstationPointType.AnalogInput or Dnp3OutstationPointType.AnalogOutputStatus;
     public bool IsCommandable => PointType is Dnp3OutstationPointType.BinaryOutputStatus or Dnp3OutstationPointType.AnalogOutputStatus;
+    public bool IsBinaryCommandable => PointType == Dnp3OutstationPointType.BinaryOutputStatus;
     public string RuntimeValueText => IsBinaryLike ? (BoolValue ? "ON" : "OFF") : AnalogValue.ToString("0.###", CultureInfo.InvariantCulture);
 
     public Dnp3SimulatorSignal Clone()

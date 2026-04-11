@@ -122,7 +122,7 @@
                 <StackPanel>
                     <TextBlock Text="Connection Profile" Foreground="{StaticResource TextMutedBrush}" />
                     <TextBlock Margin="0,6,0,0" FontSize="16" FontWeight="SemiBold" Text="{Binding ConnectionProfile}" />
-                    <TextBlock Margin="0,4,0,0" Text="{Binding ConnectionTarget}" />
+                    <TextBlock Margin="0,4,0,0" Text="{Binding ConnectionTarget, Mode=OneWay}" />
                 </StackPanel>
             </Border>
 
@@ -187,7 +187,7 @@
                             <StackPanel>
                                 <TextBlock Text="Session Summary" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Margin="0,10,0,0" Text="{Binding ConnectionProfile}" />
-                                <TextBlock Margin="0,6,0,0" Text="{Binding ConnectionTarget}" />
+                                <TextBlock Margin="0,6,0,0" Text="{Binding ConnectionTarget, Mode=OneWay}" />
                                 <TextBlock Margin="0,6,0,0" Text="{Binding PollingProfile}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
@@ -213,6 +213,171 @@
                             <DataGridTextColumn Binding="{Binding Source}" Header="Variation" Width="150" />
                         </DataGrid.Columns>
                     </DataGrid>
+                </TabItem>
+
+                <TabItem Header="Command Testing">
+                    <Grid Margin="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="420" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,12,0">
+                            <StackPanel>
+                                <TextBlock Text="Binary Control Workflow" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Margin="0,8,0,0"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Issue a binary output command and compare request evidence with later command-event or status feedback."
+                                           TextWrapping="Wrap" />
+
+                                <StackPanel Margin="0,16,0,0">
+                                    <TextBlock Text="Point Index" />
+                                    <TextBox Text="{Binding CommandPointIndex, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <StackPanel Margin="0,12,0,0">
+                                    <TextBlock Text="Command Mode" />
+                                    <ComboBox ItemsSource="{Binding CommandModes}"
+                                              SelectedItem="{Binding SelectedCommandMode}" />
+                                </StackPanel>
+
+                                <StackPanel Margin="0,12,0,0">
+                                    <TextBlock Text="Binary Operation" />
+                                    <ComboBox ItemsSource="{Binding BinaryOperations}"
+                                              SelectedItem="{Binding SelectedBinaryOperation}" />
+                                </StackPanel>
+
+                                <Button Margin="0,18,0,0"
+                                        Height="36"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Command="{Binding SendBinaryCommand}"
+                                        Content="Send Binary Command" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Command Life Tracker" FontSize="16" FontWeight="SemiBold" />
+
+                                <Grid Grid.Row="1" Margin="0,12,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding LatestTransactionId, Mode=OneWay}" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding LatestFinalVerdict, Mode=OneWay}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,8,12,0">
+                                        <Run Text="Point: " />
+                                        <Run Text="{Binding LatestTransactionPoint, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" HorizontalAlignment="Right">
+                                        <Run Text="Feedback Match: " />
+                                        <Run Text="{Binding LatestFeedbackMatch, Mode=OneWay}" />
+                                    </TextBlock>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,6,12,0">
+                                        <Run Text="Prepared: " />
+                                        <Run Text="{Binding LatestPreparedAt, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,6,0,0" HorizontalAlignment="Right">
+                                        <Run Text="Requested: " />
+                                        <Run Text="{Binding LatestRequestedAt, Mode=OneWay}" />
+                                    </TextBlock>
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,6,12,0">
+                                        <Run Text="Acceptance: " />
+                                        <Run Text="{Binding LatestAcceptanceResult, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,6,0,0" HorizontalAlignment="Right">
+                                        <Run Text="Accepted At: " />
+                                        <Run Text="{Binding LatestAcceptanceAt, Mode=OneWay}" />
+                                    </TextBlock>
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Margin="0,6,12,0">
+                                        <Run Text="Feedback: " />
+                                        <Run Text="{Binding LatestFeedbackResult, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,6,0,0" HorizontalAlignment="Right">
+                                        <Run Text="Evidence: " />
+                                        <Run Text="{Binding LatestFeedbackEvidence, Mode=OneWay}" />
+                                    </TextBlock>
+
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Margin="0,6,12,0">
+                                        <Run Text="Feedback At: " />
+                                        <Run Text="{Binding LatestFeedbackAt, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Grid.Row="5" Grid.Column="1" Margin="0,6,0,0" HorizontalAlignment="Right">
+                                        <Run Text="Acceptance Latency: " />
+                                        <Run Text="{Binding LatestAcceptanceLatency, Mode=OneWay}" />
+                                    </TextBlock>
+
+                                    <TextBlock Grid.Row="6" Grid.Column="0" Margin="0,6,12,0">
+                                        <Run Text="Channel: " />
+                                        <Run Text="{Binding ConnectionTarget, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Grid.Row="6" Grid.Column="1" Margin="0,6,0,0" HorizontalAlignment="Right">
+                                        <Run Text="Feedback Latency: " />
+                                        <Run Text="{Binding LatestFeedbackLatency, Mode=OneWay}" />
+                                    </TextBlock>
+                                </Grid>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding CommandLifecycle}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          AlternatingRowBackground="#F8F8F8"
+                                          HeadersVisibility="Column"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:HH:mm:ss.fff}}" Header="Time" Width="130" />
+                                        <DataGridTextColumn Binding="{Binding Stage}" Header="Stage" Width="180" />
+                                        <DataGridTextColumn Binding="{Binding Detail}" Header="Detail" Width="*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <Border Grid.Row="3"
+                                        Margin="0,14,0,0"
+                                        Style="{StaticResource CardBorderStyle}"
+                                        Padding="12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Command Audit Verdict" FontWeight="SemiBold" />
+                                            <TextBlock Margin="0,6,0,0" Text="{Binding LatestFinalVerdict, Mode=OneWay}" />
+                                            <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" Text="{Binding LatestFeedbackResult, Mode=OneWay}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="16"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding LatestFeedbackLatency, Mode=OneWay}" />
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
                 </TabItem>
 
                 <TabItem Header="SCADA Events">

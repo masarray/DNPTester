@@ -33,6 +33,11 @@
                 <x:Type TypeName="models:DiscreteAnimationKind" />
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
+        <ObjectDataProvider x:Key="BinaryCommandBehaviorValues" MethodName="GetValues" ObjectType="{x:Type sys:Enum}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="models:BinaryCommandBehavior" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
     </Window.Resources>
 
     <Grid Background="#F3F3F3">
@@ -192,8 +197,12 @@
                             <DataGridTextColumn Width="110" Header="Anim ms" Binding="{Binding AnimationIntervalMs}" />
                             <DataGridTextColumn Width="110" Header="Toggle s" Binding="{Binding ToggleIntervalSeconds}" />
                             <DataGridCheckBoxColumn Width="90" Header="Timestamp" Binding="{Binding UseTimestamp}" />
+                            <DataGridCheckBoxColumn Width="95" Header="Cmd Sim" Binding="{Binding BinaryCommand.IsEnabled}" />
+                            <DataGridTextColumn Width="95" Header="Fb Index" Binding="{Binding BinaryCommand.FeedbackIndex}" />
+                            <DataGridComboBoxColumn Width="160" Header="Cmd Behavior" ItemsSource="{Binding Source={StaticResource BinaryCommandBehaviorValues}}" SelectedItemBinding="{Binding BinaryCommand.Behavior}" />
+                            <DataGridTextColumn Width="110" Header="Fb Delay ms" Binding="{Binding BinaryCommand.FeedbackDelayMs}" />
                             <DataGridTextColumn Width="130" Header="Command Status" Binding="{Binding LastCommandStatus}" IsReadOnly="True" />
-                            <DataGridTextColumn Width="220" Header="Command Detail" Binding="{Binding LastCommandDetail}" IsReadOnly="True" />
+                            <DataGridTextColumn Width="240" Header="Command Detail" Binding="{Binding LastCommandDetail}" IsReadOnly="True" />
                             <DataGridTextColumn Width="220" Header="Notes" Binding="{Binding Notes}" />
                         </DataGrid.Columns>
                     </DataGrid>

@@ -8,6 +8,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
 {
     private readonly object _sync = new();
     private readonly object _fragmentSync = new();
+    private readonly object _commandSync = new();
     private readonly ConcurrentDictionary<string, ValueViewerRow> _latestValues = new();
 
     private Runtime? _runtime;
@@ -19,8 +20,13 @@ public sealed class Dnp3MasterService : IDnp3MasterService
     private bool _loggingConfigured;
     private FragmentContext _fragmentContext = FragmentContext.Empty;
     private SourceReason _pendingSourceReason = SourceReason.Unknown;
+    private ConnectionSettings? _activeSettings;
+    private CommandTransactionState? _latestCommandTransaction;
+    private CancellationTokenSource? _commandFeedbackTimeoutCts;
+    private int _commandSequence;
 
     public event EventHandler<ConnectionStatusSnapshot>? ConnectionStateChanged;
+    public event EventHandler<CommandTransaction>? CommandTransactionUpdated;
     public event EventHandler<ValueViewerRow>? ValueReceived;
     public event EventHandler<EventLogEntry>? EventLogReceived;
     public event EventHandler<SoeEventRow>? SoeEventReceived;
@@ -43,6 +49,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
 
                 ConfigureLoggingOnce();
                 var profile = BuildPollingProfile(settings);
+                _activeSettings = settings;
                 _runtime = new Runtime(new RuntimeConfig { NumCoreThreads = 4 });
                 _channel = settings.Transport switch
                 {
@@ -107,7 +114,9 @@ public sealed class Dnp3MasterService : IDnp3MasterService
                     _staticRefreshTask = null;
                     _channel = null;
                     _runtime = null;
+                    _activeSettings = null;
                     IsConnected = false;
+                    CancelCommandFeedbackTimeout();
                 }
             }
         });
@@ -178,6 +187,105 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         var result = await channel.CheckLinkStatus(association);
         WriteTrace("TX/RX", "Link", $"Check link status result: {result}");
         WriteEvent("MASTER", "Link", $"Check link status result: {result}");
+    }
+
+    public async Task ExecuteBinaryControlAsync(ushort index, CommandMode mode, OpType operation, DateTime preparedAtLocal)
+    {
+        MasterChannel? channel;
+        AssociationId? association;
+        CommandTransaction transaction;
+
+        lock (_sync)
+        {
+            channel = _channel;
+            association = _association;
+        }
+
+        if (channel is null || association is null)
+        {
+            throw new InvalidOperationException("DNP3 master is not connected.");
+        }
+
+        var commandText = $"{mode} {operation} index={index}";
+        transaction = StartCommandTransaction(index, mode, operation, preparedAtLocal);
+
+        PublishScadaEvent(
+            "Command Requested",
+            mode.ToString(),
+            "Binary Output",
+            index,
+            operation.ToString(),
+            string.Empty,
+            "Pending",
+            "-",
+            SourceReason.CommandResponse,
+            $"Binary control requested: {commandText}");
+        WriteTrace("TX", "Command", $"Issuing binary control {commandText}");
+        AppendCommandLifecycle(
+            transaction.TransactionId,
+            "Command Requested",
+            $"Binary control requested on {transaction.PointType} {index} using {mode} / {operation}.",
+            update => update with { RequestedAtLocal = DateTime.Now });
+
+        try
+        {
+            var commands = new CommandSet();
+            commands.AddG12V1U16(index, Group12Var1.FromCode(ControlCode.FromOpType(operation)));
+            await channel.Operate(association, mode, commands);
+            var acceptedAt = DateTime.Now;
+
+            PublishScadaEvent(
+                "Command Accepted",
+                mode.ToString(),
+                "Binary Output",
+                index,
+                operation.ToString(),
+                string.Empty,
+                "Accepted",
+                "-",
+                SourceReason.CommandResponse,
+                $"Binary control accepted by master service: {commandText}");
+            WriteTrace("TX", "Command", $"Binary control accepted {commandText}");
+            AppendCommandLifecycle(
+                transaction.TransactionId,
+                "Command Accepted",
+                $"Master service accepted binary control {commandText}.",
+                update => update with
+                {
+                    AcceptanceAtLocal = acceptedAt,
+                    AcceptanceResult = "Accepted",
+                    AcceptanceLatencyMs = update.RequestedAtLocal.HasValue ? (int)(acceptedAt - update.RequestedAtLocal.Value).TotalMilliseconds : null
+                });
+            StartCommandFeedbackTimeout(transaction.TransactionId);
+        }
+        catch (Exception ex)
+        {
+            PublishScadaEvent(
+                "Command Failed",
+                mode.ToString(),
+                "Binary Output",
+                index,
+                operation.ToString(),
+                string.Empty,
+                "Failed",
+                "-",
+                SourceReason.CommandResponse,
+                $"Binary control failed: {commandText}. {ex.Message}");
+            WriteTrace("TX", "Command", $"Binary control failed {commandText}: {ex.Message}");
+            CancelCommandFeedbackTimeout();
+            AppendCommandLifecycle(
+                transaction.TransactionId,
+                "Command Failed",
+                $"Binary control failed: {ex.Message}",
+                update => update with
+                {
+                    AcceptanceAtLocal = DateTime.Now,
+                    AcceptanceResult = "Failed",
+                    FinalVerdict = "Rejected",
+                    IsTerminal = true
+                });
+            throw;
+        }
     }
 
     private void ConfigureLoggingOnce()
@@ -302,6 +410,8 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         {
             PublishScadaEvent("Command Event", source, pointType, index, value, previous?.Value ?? string.Empty, status, sourceTimestamp.TimeQuality, SourceReason.CommandResponse, $"Command event recorded with status {status}");
         }
+
+        TryCorrelateCommandFeedback(pointType, index, value, status, sourceTimestamp);
     }
 
     private void PublishScadaEvent(string eventType, string source, string pointType, ushort index, string value, string previousValue, string status, string quality, SourceReason sourceReason, string detail)
@@ -465,6 +575,281 @@ public sealed class Dnp3MasterService : IDnp3MasterService
     {
         public static FragmentContext Empty { get; } = new("Unknown", false, string.Empty, SourceReason.Unknown, string.Empty);
     }
+
+    private CommandTransaction StartCommandTransaction(ushort index, CommandMode mode, OpType operation, DateTime preparedAtLocal)
+    {
+        CancelCommandFeedbackTimeout();
+
+        CommandTransactionState state;
+        lock (_commandSync)
+        {
+            _commandSequence++;
+            state = new CommandTransactionState(
+                $"CMD-{_commandSequence:D5}",
+                "Binary Output",
+                index,
+                mode.ToString(),
+                operation.ToString(),
+                preparedAtLocal,
+                null,
+                null,
+                null,
+                "Pending",
+                "Pending",
+                "In Progress",
+                false,
+                CommandFeedbackEvidenceKind.None,
+                null,
+                null,
+                false,
+                Array.Empty<CommandLifecycleEntry>());
+
+            _latestCommandTransaction = state;
+        }
+
+        AppendCommandLifecycle(
+            state.TransactionId,
+            "Command Prepared",
+            $"Operator prepared binary control for index {index}: {mode} / {operation}.",
+            update => update);
+
+        return ToCommandTransaction(state);
+    }
+
+    private void AppendCommandLifecycle(string transactionId, string stage, string detail, Func<CommandTransactionState, CommandTransactionState> update)
+    {
+        CommandTransaction? snapshot = null;
+
+        lock (_commandSync)
+        {
+            if (_latestCommandTransaction is null || _latestCommandTransaction.TransactionId != transactionId)
+            {
+                return;
+            }
+
+            var lifecycle = _latestCommandTransaction.Lifecycle;
+            if (!lifecycle.Any(x => x.Stage == stage && x.Detail == detail))
+            {
+                lifecycle = lifecycle
+                    .Concat(new[]
+                    {
+                        new CommandLifecycleEntry
+                        {
+                            TimestampLocal = DateTime.Now,
+                            Stage = stage,
+                            Detail = detail
+                        }
+                    })
+                    .ToArray();
+            }
+
+            _latestCommandTransaction = update(_latestCommandTransaction) with { Lifecycle = lifecycle };
+            snapshot = ToCommandTransaction(_latestCommandTransaction);
+        }
+
+        if (snapshot is not null)
+        {
+            CommandTransactionUpdated?.Invoke(this, snapshot);
+        }
+    }
+
+    private void StartCommandFeedbackTimeout(string transactionId)
+    {
+        var timeoutSeconds = Math.Max(1, _activeSettings?.RequestTimeoutSeconds ?? 5);
+        var cts = new CancellationTokenSource();
+
+        lock (_commandSync)
+        {
+            _commandFeedbackTimeoutCts?.Cancel();
+            _commandFeedbackTimeoutCts?.Dispose();
+            _commandFeedbackTimeoutCts = cts;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cts.Token);
+                AppendCommandLifecycle(
+                    transactionId,
+                    "Feedback Timeout",
+                    $"No command feedback was observed within {timeoutSeconds} seconds.",
+                    update =>
+                    {
+                        if (update.IsTerminal || update.FeedbackAtLocal.HasValue || update.FinalVerdict is "Success" or "Rejected" or "Feedback Mismatch")
+                        {
+                            return update;
+                        }
+
+                        return update with
+                        {
+                            FeedbackResult = "Timeout",
+                            FinalVerdict = "Accepted but no feedback",
+                            IsTerminal = true
+                        };
+                    });
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        });
+    }
+
+    private void CancelCommandFeedbackTimeout()
+    {
+        lock (_commandSync)
+        {
+            _commandFeedbackTimeoutCts?.Cancel();
+            _commandFeedbackTimeoutCts?.Dispose();
+            _commandFeedbackTimeoutCts = null;
+        }
+    }
+
+    private void TryCorrelateCommandFeedback(string pointType, ushort index, string value, string status, SourceTimestampInfo sourceTimestamp)
+    {
+        CommandTransactionState? current;
+        ValueViewerRow? latestValue;
+        lock (_commandSync)
+        {
+            current = _latestCommandTransaction;
+        }
+
+        _latestValues.TryGetValue($"{pointType}:{index}", out latestValue);
+
+        if (current is null || current.PointIndex != index || current.IsTerminal || current.FeedbackAtLocal.HasValue)
+        {
+            return;
+        }
+
+        if (pointType is not "Binary Output Status" && !pointType.Contains("Binary Command Event", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (current.RequestedAtLocal is null)
+        {
+            return;
+        }
+
+        if (sourceTimestamp.LocalTime.HasValue && sourceTimestamp.LocalTime.Value < current.RequestedAtLocal.Value)
+        {
+            return;
+        }
+
+        var allowedWindow = TimeSpan.FromSeconds(Math.Max(1, _activeSettings?.RequestTimeoutSeconds ?? 5) + 2);
+        var observedAt = sourceTimestamp.LocalTime ?? DateTime.Now;
+        if (observedAt - current.RequestedAtLocal.Value > allowedWindow)
+        {
+            return;
+        }
+
+        var expectedValue = GetExpectedBinaryValue(current.Operation);
+        var isCommandEvent = pointType.Contains("Binary Command Event", StringComparison.Ordinal);
+        var evidenceKind = ResolveFeedbackEvidenceKind(isCommandEvent, pointType, latestValue, value);
+        var matched = isCommandEvent
+            ? string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase)
+            : string.Equals(value, expectedValue, StringComparison.OrdinalIgnoreCase);
+        var feedbackResult = isCommandEvent
+            ? $"Command Event: {status}"
+            : $"Status Feedback: {value}";
+        var verdict = matched ? "Success" : "Feedback Mismatch";
+
+        CancelCommandFeedbackTimeout();
+        AppendCommandLifecycle(
+            current.TransactionId,
+            matched ? "Feedback Matched" : "Feedback Mismatch",
+            isCommandEvent
+                ? $"Command event received with status {status}."
+                : evidenceKind == CommandFeedbackEvidenceKind.StatusChange
+                    ? $"Binary output status changed to {value}, expected {expectedValue}."
+                    : $"Binary output status read as {value}, expected {expectedValue} (simple rule).",
+            update => update with
+            {
+                FeedbackAtLocal = observedAt,
+                FeedbackResult = feedbackResult,
+                FeedbackMatched = matched,
+                FeedbackEvidenceKind = evidenceKind,
+                FeedbackLatencyMs = update.RequestedAtLocal.HasValue ? (int)(observedAt - update.RequestedAtLocal.Value).TotalMilliseconds : null,
+                FinalVerdict = verdict,
+                IsTerminal = true
+            });
+
+        AppendCommandLifecycle(
+            current.TransactionId,
+            "Transaction Completed",
+            $"Command transaction completed with verdict: {verdict}.",
+            update => update);
+    }
+
+    private static string GetExpectedBinaryValue(string operation)
+    {
+        return operation switch
+        {
+            nameof(OpType.LatchOn) or nameof(OpType.PulseOn) => bool.TrueString,
+            nameof(OpType.LatchOff) or nameof(OpType.PulseOff) => bool.FalseString,
+            _ => string.Empty
+        };
+    }
+
+    private static CommandFeedbackEvidenceKind ResolveFeedbackEvidenceKind(bool isCommandEvent, string pointType, ValueViewerRow? latestValue, string value)
+    {
+        if (isCommandEvent)
+        {
+            return CommandFeedbackEvidenceKind.CommandEvent;
+        }
+
+        if (pointType == "Binary Output Status" && latestValue is not null && !string.Equals(latestValue.Value, value, StringComparison.OrdinalIgnoreCase))
+        {
+            return CommandFeedbackEvidenceKind.StatusChange;
+        }
+
+        return CommandFeedbackEvidenceKind.StatusReadSimpleRule;
+    }
+
+    private static CommandTransaction ToCommandTransaction(CommandTransactionState state)
+    {
+        return new CommandTransaction
+        {
+            TransactionId = state.TransactionId,
+            PointType = state.PointType,
+            PointIndex = state.PointIndex,
+            CommandMode = state.CommandMode,
+            Operation = state.Operation,
+            PreparedAtLocal = state.PreparedAtLocal,
+            RequestedAtLocal = state.RequestedAtLocal,
+            AcceptanceAtLocal = state.AcceptanceAtLocal,
+            FeedbackAtLocal = state.FeedbackAtLocal,
+            AcceptanceResult = state.AcceptanceResult,
+            FeedbackResult = state.FeedbackResult,
+            FinalVerdict = state.FinalVerdict,
+            FeedbackMatched = state.FeedbackMatched,
+            FeedbackEvidenceKind = state.FeedbackEvidenceKind,
+            AcceptanceLatencyMs = state.AcceptanceLatencyMs,
+            FeedbackLatencyMs = state.FeedbackLatencyMs,
+            IsTerminal = state.IsTerminal,
+            Lifecycle = state.Lifecycle
+        };
+    }
+
+    private sealed record CommandTransactionState(
+        string TransactionId,
+        string PointType,
+        ushort PointIndex,
+        string CommandMode,
+        string Operation,
+        DateTime PreparedAtLocal,
+        DateTime? RequestedAtLocal,
+        DateTime? AcceptanceAtLocal,
+        DateTime? FeedbackAtLocal,
+        string AcceptanceResult,
+        string FeedbackResult,
+        string FinalVerdict,
+        bool FeedbackMatched,
+        CommandFeedbackEvidenceKind FeedbackEvidenceKind,
+        int? AcceptanceLatencyMs,
+        int? FeedbackLatencyMs,
+        bool IsTerminal,
+        IReadOnlyList<CommandLifecycleEntry> Lifecycle);
 
     private sealed record PollingProfile(
         PollingProfileKind Kind,

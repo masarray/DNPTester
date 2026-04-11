@@ -8,6 +8,7 @@ public sealed class Dnp3OutstationService : IDisposable
     private readonly object _sync = new();
     private readonly Dictionary<(Dnp3OutstationPointType, ushort), Dnp3SimulatorSignal> _runtimeSignals = new();
     private readonly Action<RuntimeLogEntry>? _logSink;
+    private readonly List<CancellationTokenSource> _pendingCommandFeedback = new();
     private Runtime? _runtime;
     private Outstation? _outstation;
     private OutstationServer? _server;
@@ -91,28 +92,60 @@ public sealed class Dnp3OutstationService : IDisposable
 
     public void Stop()
     {
+        Outstation? outstation;
+        OutstationServer? server;
+        Runtime? runtime;
+        List<CancellationTokenSource> pendingFeedback;
+
         lock (_sync)
         {
-            if (_outstation is not null)
-            {
-                try
-                {
-                    _outstation.Disable();
-                }
-                catch
-                {
-                }
-            }
+            outstation = _outstation;
+            server = _server;
+            runtime = _runtime;
+            pendingFeedback = _pendingCommandFeedback.ToList();
 
-            _server?.Shutdown();
             _server = null;
             _outstation = null;
-            _runtime?.Shutdown();
             _runtime = null;
             _runtimeSignals.Clear();
+            _pendingCommandFeedback.Clear();
             _isRunning = false;
-            PublishState("Stopped");
         }
+
+        foreach (var pending in pendingFeedback)
+        {
+            pending.Cancel();
+            pending.Dispose();
+        }
+
+        if (outstation is not null)
+        {
+            try
+            {
+                outstation.Disable();
+            }
+            catch
+            {
+            }
+        }
+
+        try
+        {
+            server?.Shutdown();
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            runtime?.Shutdown();
+        }
+        catch
+        {
+        }
+
+        PublishState("Stopped");
     }
 
     public void PublishSignalValue(Dnp3SimulatorSignal signal)
@@ -163,6 +196,7 @@ public sealed class Dnp3OutstationService : IDisposable
         target.Notes = source.Notes;
         target.LastCommandStatus = source.LastCommandStatus;
         target.LastCommandDetail = source.LastCommandDetail;
+        target.BinaryCommand = source.BinaryCommand.Clone();
     }
 
     private static OutstationConfig GetOutstationConfig(Dnp3SlaveConnectionSettings settings)
@@ -282,21 +316,124 @@ public sealed class Dnp3OutstationService : IDisposable
         });
     }
 
-    private void HandleBinaryCommand(ushort index, bool value, string origin)
+    private CommandStatus HandleBinaryCommand(ushort index, bool value, string origin)
     {
         if (!_runtimeSignals.TryGetValue((Dnp3OutstationPointType.BinaryOutputStatus, index), out var signal))
         {
             PublishLog("Command", $"{origin} BOS index={index} rejected: point not configured");
-            return;
+            return CommandStatus.NotSupported;
         }
 
-        signal.BoolValue = value;
-        signal.CaptureEdgeTimestamp(DateTime.Now);
-        signal.LastCommandStatus = "Success";
-        signal.LastCommandDetail = $"{origin} -> {(value ? "ON" : "OFF")}";
-        PublishSignalValue(signal);
-        PublishLog("Command", $"{origin} BOS index={index} -> {(value ? "ON" : "OFF")}");
-        SignalCommanded?.Invoke(signal.Clone());
+        var scenario = signal.BinaryCommand ?? new BinaryCommandScenario();
+        var now = DateTime.Now;
+        signal.LastUpdatedLocal = now;
+
+        if (!scenario.IsEnabled)
+        {
+            signal.BoolValue = value;
+            signal.CaptureEdgeTimestamp(now);
+            signal.LastCommandStatus = "Success";
+            signal.LastCommandDetail = $"{origin} accepted with immediate matching feedback";
+            PublishSignalValue(signal);
+            PublishLog("Command", $"{origin} BOS index={index} accepted with immediate matching feedback");
+            SignalCommanded?.Invoke(signal.Clone());
+            return CommandStatus.Success;
+        }
+
+        switch (scenario.Behavior)
+        {
+            case BinaryCommandBehavior.Reject:
+                signal.LastCommandStatus = "Rejected";
+                signal.LastCommandDetail = $"{origin} rejected by simulator scenario";
+                PublishLog("Command", $"{origin} BOS index={index} rejected by scenario");
+                SignalCommanded?.Invoke(signal.Clone());
+                return CommandStatus.Blocked;
+
+            case BinaryCommandBehavior.SuccessNoFeedback:
+                signal.LastCommandStatus = "Accepted";
+                signal.LastCommandDetail = $"{origin} accepted without feedback";
+                PublishLog("Command", $"{origin} BOS index={index} accepted without feedback");
+                SignalCommanded?.Invoke(signal.Clone());
+                return CommandStatus.Success;
+
+            case BinaryCommandBehavior.SuccessDelayedMatch:
+                signal.LastCommandStatus = "Accepted";
+                signal.LastCommandDetail = $"{origin} accepted, delayed matching feedback pending";
+                PublishLog("Command", $"{origin} BOS index={index} accepted, delayed matching feedback scheduled");
+                SignalCommanded?.Invoke(signal.Clone());
+                ScheduleBinaryFeedback(signal, scenario, value, origin, mismatch: false);
+                return CommandStatus.Success;
+
+            case BinaryCommandBehavior.SuccessMismatch:
+                signal.LastCommandStatus = "Accepted";
+                signal.LastCommandDetail = $"{origin} accepted, mismatched feedback pending";
+                PublishLog("Command", $"{origin} BOS index={index} accepted, mismatched feedback scheduled");
+                SignalCommanded?.Invoke(signal.Clone());
+                ScheduleBinaryFeedback(signal, scenario, value, origin, mismatch: true);
+                return CommandStatus.Success;
+
+            default:
+                signal.BoolValue = value;
+                signal.CaptureEdgeTimestamp(now);
+                signal.LastCommandStatus = "Success";
+                signal.LastCommandDetail = $"{origin} accepted with matching feedback";
+                PublishSignalValue(signal);
+                PublishLog("Command", $"{origin} BOS index={index} accepted with matching feedback");
+                SignalCommanded?.Invoke(signal.Clone());
+                return CommandStatus.Success;
+        }
+    }
+
+    private void ScheduleBinaryFeedback(Dnp3SimulatorSignal commandSignal, BinaryCommandScenario scenario, bool commandedValue, string origin, bool mismatch)
+    {
+        var cts = new CancellationTokenSource();
+        lock (_sync)
+        {
+            _pendingCommandFeedback.Add(cts);
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(0, scenario.FeedbackDelayMs)), cts.Token);
+
+                Dnp3SimulatorSignal? feedbackSignal;
+                lock (_sync)
+                {
+                    _runtimeSignals.TryGetValue((Dnp3OutstationPointType.BinaryOutputStatus, scenario.FeedbackIndex), out feedbackSignal);
+                }
+
+                if (feedbackSignal is null)
+                {
+                    PublishLog("Command", $"{origin} feedback skipped: BOS index={scenario.FeedbackIndex} not configured");
+                    return;
+                }
+
+                var feedbackValue = mismatch ? !commandedValue : commandedValue;
+                feedbackSignal.BoolValue = feedbackValue;
+                feedbackSignal.CaptureEdgeTimestamp(DateTime.Now);
+                feedbackSignal.LastCommandStatus = mismatch ? "Mismatch Feedback" : "Feedback Applied";
+                feedbackSignal.LastCommandDetail = mismatch
+                    ? $"{origin} feedback forced to {(feedbackValue ? "ON" : "OFF")} (mismatch)"
+                    : $"{origin} feedback applied to {(feedbackValue ? "ON" : "OFF")}";
+                PublishSignalValue(feedbackSignal);
+                PublishLog("Command", $"{origin} feedback BOS index={feedbackSignal.Index} -> {(feedbackValue ? "ON" : "OFF")}");
+                SignalCommanded?.Invoke(feedbackSignal.Clone());
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            finally
+            {
+                lock (_sync)
+                {
+                    _pendingCommandFeedback.Remove(cts);
+                }
+
+                cts.Dispose();
+            }
+        });
     }
 
     private void HandleAnalogCommand(ushort index, double value, string origin)
@@ -400,13 +537,26 @@ public sealed class Dnp3OutstationService : IDisposable
 
         public void BeginFragment() => _owner.PublishLog("Command", "Begin fragment");
         public void EndFragment(DatabaseHandle database) => _owner.PublishLog("Command", "End fragment");
-        public CommandStatus SelectG12v1(Group12Var1 control, ushort index, DatabaseHandle database) => CommandStatus.Success;
+        public CommandStatus SelectG12v1(Group12Var1 control, ushort index, DatabaseHandle database)
+        {
+            if (!_owner._runtimeSignals.TryGetValue((Dnp3OutstationPointType.BinaryOutputStatus, index), out var signal))
+            {
+                return CommandStatus.NotSupported;
+            }
+
+            if (signal.BinaryCommand.IsEnabled && signal.BinaryCommand.Behavior == BinaryCommandBehavior.Reject)
+            {
+                _owner.PublishLog("Command", $"Select BOS index={index} rejected by scenario");
+                return CommandStatus.Blocked;
+            }
+
+            return CommandStatus.Success;
+        }
 
         public CommandStatus OperateG12v1(Group12Var1 control, ushort index, OperateType opType, DatabaseHandle database)
         {
             var turnOn = control.Code.OpType == OpType.LatchOn || control.Code.OpType == OpType.PulseOn;
-            _owner.HandleBinaryCommand(index, turnOn, $"Operate {opType}");
-            return CommandStatus.Success;
+            return _owner.HandleBinaryCommand(index, turnOn, $"Operate {opType}");
         }
 
         public CommandStatus SelectG41v1(int value, ushort index, DatabaseHandle database) => CommandStatus.Success;
