@@ -8,4 +8,5 @@ public sealed class PointCatalogProfile
     [JsonIgnore]
     public string FilePath { get; set; } = string.Empty;
     public List<PointCatalogEntry> Points { get; set; } = [];
+    public List<CommandFeedbackMapping> CommandMappings { get; set; } = [];
 }

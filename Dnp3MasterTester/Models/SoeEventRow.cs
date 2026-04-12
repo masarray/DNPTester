@@ -24,7 +24,11 @@ public sealed class SoeEventRow
     public SourceReason SourceReason { get; set; } = SourceReason.Unknown;
     public string Notes { get; set; } = string.Empty;
     public string SourceReasonText => SourceReason.ToString();
-    public string PointLabel => string.IsNullOrWhiteSpace(ScadaTag) ? $"{PointType} {Index}" : $"{ScadaTag} | {DisplayName}";
+    public string PointLabel => !string.IsNullOrWhiteSpace(ScadaTag) && !string.IsNullOrWhiteSpace(DisplayName)
+        ? $"{ScadaTag} | {DisplayName}"
+        : !string.IsNullOrWhiteSpace(DisplayName)
+            ? DisplayName
+            : $"{PointType} {Index}";
     public string SourceTimestampText => SourceTimestampKind switch
     {
         SourceTimestampKind.Valid when SourceTimestampLocal.HasValue => SourceTimestampLocal.Value.ToString("yyyy-MM-dd HH:mm:ss.fff"),

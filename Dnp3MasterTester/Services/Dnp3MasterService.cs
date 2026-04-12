@@ -189,7 +189,14 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         WriteEvent("MASTER", "Link", $"Check link status result: {result}");
     }
 
-    public async Task ExecuteBinaryControlAsync(ushort index, CommandMode mode, OpType operation, DateTime preparedAtLocal)
+    public async Task ExecuteBinaryControlAsync(
+        ushort index,
+        CommandMode mode,
+        OpType operation,
+        DateTime preparedAtLocal,
+        string? expectedFeedbackPointType = null,
+        ushort? expectedFeedbackIndex = null,
+        int? correlationWindowMs = null)
     {
         MasterChannel? channel;
         AssociationId? association;
@@ -207,7 +214,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         }
 
         var commandText = $"{mode} {operation} index={index}";
-        transaction = StartCommandTransaction(index, mode, operation, preparedAtLocal);
+        transaction = StartCommandTransaction(index, mode, operation, preparedAtLocal, expectedFeedbackPointType, expectedFeedbackIndex, correlationWindowMs);
 
         PublishScadaEvent(
             "Command Requested",
@@ -581,7 +588,14 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         public static FragmentContext Empty { get; } = new("Unknown", false, string.Empty, SourceReason.Unknown, string.Empty);
     }
 
-    private CommandTransaction StartCommandTransaction(ushort index, CommandMode mode, OpType operation, DateTime preparedAtLocal)
+    private CommandTransaction StartCommandTransaction(
+        ushort index,
+        CommandMode mode,
+        OpType operation,
+        DateTime preparedAtLocal,
+        string? expectedFeedbackPointType,
+        ushort? expectedFeedbackIndex,
+        int? correlationWindowMs)
     {
         CancelCommandFeedbackTimeout();
 
@@ -606,6 +620,9 @@ public sealed class Dnp3MasterService : IDnp3MasterService
                 CommandFeedbackEvidenceKind.None,
                 null,
                 null,
+                expectedFeedbackPointType,
+                expectedFeedbackIndex,
+                correlationWindowMs,
                 false,
                 Array.Empty<CommandLifecycleEntry>());
 
@@ -660,7 +677,13 @@ public sealed class Dnp3MasterService : IDnp3MasterService
 
     private void StartCommandFeedbackTimeout(string transactionId)
     {
-        var timeoutSeconds = Math.Max(1, _activeSettings?.RequestTimeoutSeconds ?? 5);
+        CommandTransactionState? current;
+        lock (_commandSync)
+        {
+            current = _latestCommandTransaction;
+        }
+
+        var timeoutSeconds = Math.Max(1, (current?.CorrelationWindowMs ?? ((_activeSettings?.RequestTimeoutSeconds ?? 5) * 1000)) / 1000);
         var cts = new CancellationTokenSource();
 
         lock (_commandSync)
@@ -721,12 +744,14 @@ public sealed class Dnp3MasterService : IDnp3MasterService
 
         _latestValues.TryGetValue($"{pointType}:{index}", out latestValue);
 
-        if (current is null || current.PointIndex != index || current.IsTerminal || current.FeedbackAtLocal.HasValue)
+        if (current is null || current.IsTerminal || current.FeedbackAtLocal.HasValue)
         {
             return;
         }
 
-        if (pointType is not "Binary Output Status" && !pointType.Contains("Binary Command Event", StringComparison.Ordinal))
+        var expectedPointType = current.ExpectedFeedbackPointType ?? current.PointType;
+        var expectedPointIndex = current.ExpectedFeedbackIndex ?? current.PointIndex;
+        if (!string.Equals(pointType, expectedPointType, StringComparison.OrdinalIgnoreCase) || index != expectedPointIndex)
         {
             return;
         }
@@ -741,7 +766,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             return;
         }
 
-        var allowedWindow = TimeSpan.FromSeconds(Math.Max(1, _activeSettings?.RequestTimeoutSeconds ?? 5) + 2);
+        var allowedWindow = TimeSpan.FromMilliseconds(current.CorrelationWindowMs ?? ((Math.Max(1, _activeSettings?.RequestTimeoutSeconds ?? 5) + 2) * 1000));
         var observedAt = sourceTimestamp.LocalTime ?? DateTime.Now;
         if (observedAt - current.RequestedAtLocal.Value > allowedWindow)
         {
@@ -749,25 +774,18 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         }
 
         var expectedValue = GetExpectedBinaryValue(current.Operation);
-        var isCommandEvent = pointType.Contains("Binary Command Event", StringComparison.Ordinal);
-        var evidenceKind = ResolveFeedbackEvidenceKind(isCommandEvent, pointType, latestValue, value);
-        var matched = isCommandEvent
-            ? string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase)
-            : string.Equals(value, expectedValue, StringComparison.OrdinalIgnoreCase);
-        var feedbackResult = isCommandEvent
-            ? $"Command Event: {status}"
-            : $"Status Feedback: {value}";
+        var evidenceKind = ResolveFeedbackEvidenceKind(false, pointType, latestValue, value);
+        var matched = string.Equals(value, expectedValue, StringComparison.OrdinalIgnoreCase);
+        var feedbackResult = $"Status Feedback: {value}";
         var verdict = matched ? "Success" : "Feedback Mismatch";
 
         CancelCommandFeedbackTimeout();
         AppendCommandLifecycle(
             current.TransactionId,
             matched ? "Feedback Matched" : "Feedback Mismatch",
-            isCommandEvent
-                ? $"Command event received with status {status}."
-                : evidenceKind == CommandFeedbackEvidenceKind.StatusChange
-                    ? $"Binary output status changed to {value}, expected {expectedValue}."
-                    : $"Binary output status read as {value}, expected {expectedValue} (simple rule).",
+            evidenceKind == CommandFeedbackEvidenceKind.StatusChange
+                ? $"Configured feedback point changed to {value}, expected {expectedValue}."
+                : $"Configured feedback point read as {value}, expected {expectedValue} (simple rule).",
             update => update with
             {
                 FeedbackAtLocal = observedAt,
@@ -803,7 +821,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             return CommandFeedbackEvidenceKind.CommandEvent;
         }
 
-        if (pointType == "Binary Output Status" && latestValue is not null && !string.Equals(latestValue.Value, value, StringComparison.OrdinalIgnoreCase))
+        if ((pointType == "Binary Output Status" || pointType == "Binary Input") && latestValue is not null && !string.Equals(latestValue.Value, value, StringComparison.OrdinalIgnoreCase))
         {
             return CommandFeedbackEvidenceKind.StatusChange;
         }
@@ -831,6 +849,8 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             FeedbackEvidenceKind = state.FeedbackEvidenceKind,
             AcceptanceLatencyMs = state.AcceptanceLatencyMs,
             FeedbackLatencyMs = state.FeedbackLatencyMs,
+            ExpectedFeedbackPointType = state.ExpectedFeedbackPointType,
+            ExpectedFeedbackIndex = state.ExpectedFeedbackIndex,
             IsTerminal = state.IsTerminal,
             Lifecycle = state.Lifecycle
         };
@@ -853,6 +873,9 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         CommandFeedbackEvidenceKind FeedbackEvidenceKind,
         int? AcceptanceLatencyMs,
         int? FeedbackLatencyMs,
+        string? ExpectedFeedbackPointType,
+        ushort? ExpectedFeedbackIndex,
+        int? CorrelationWindowMs,
         bool IsTerminal,
         IReadOnlyList<CommandLifecycleEntry> Lifecycle);
 

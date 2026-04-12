@@ -310,6 +310,16 @@
                                 <DataGridTextColumn Binding="{Binding DnpClass}" Header="Class" Width="70" />
                                 <DataGridTextColumn Binding="{Binding DataConcentratorUnit}" Header="DC Unit" Width="80" />
                                 <DataGridTextColumn Binding="{Binding IoRef}" Header="IO Ref" Width="120" />
+                                <DataGridCheckBoxColumn Binding="{Binding FeedbackMappingEnabled}" Header="Use Fb" Width="70" />
+                                <DataGridTextColumn Binding="{Binding FeedbackControl}" Header="Feedback Control" Width="240" IsReadOnly="True" />
+                                <DataGridTextColumn Binding="{Binding FeedbackIndex}" Header="Fb Idx" Width="70" />
+                                <DataGridComboBoxColumn Header="Fb Type"
+                                                        Width="130"
+                                                        ItemsSource="{Binding DataContext.PointTypeOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        SelectedItemBinding="{Binding FeedbackPointType}" />
+                                <DataGridTextColumn Binding="{Binding FeedbackDisplayName}" Header="Feedback Name" Width="220" />
+                                <DataGridTextColumn Binding="{Binding DefaultCommandMode}" Header="Default Mode" Width="120" />
+                                <DataGridTextColumn Binding="{Binding TimeoutMs}" Header="Timeout ms" Width="90" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>

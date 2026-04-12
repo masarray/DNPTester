@@ -264,7 +264,15 @@ public sealed class MainViewModel : ViewModelBase
             Detail = $"Operator issued binary control request for index {index}: {mode} / {operation}"
         });
 
-        await _service.ExecuteBinaryControlAsync(index, mode, operation, preparedAt);
+        var mapping = FindCommandMapping(index, "Binary Output");
+        await _service.ExecuteBinaryControlAsync(
+            index,
+            mode,
+            operation,
+            preparedAt,
+            mapping?.FeedbackPointType,
+            mapping?.FeedbackIndex,
+            mapping?.TimeoutMs);
     });
 
     private async Task RunBusyAsync(Func<Task> action)
@@ -413,6 +421,19 @@ public sealed class MainViewModel : ViewModelBase
         {
             foreach (var entry in profile.Points)
             {
+                var mapping = profile.CommandMappings.FirstOrDefault(x =>
+                    x.IsEnabled &&
+                    x.CommandIndex == entry.Index &&
+                    string.Equals(NormalizePointType(x.CommandPointType), NormalizePointType(entry.PointType), StringComparison.OrdinalIgnoreCase));
+                if (mapping is not null)
+                {
+                    entry.FeedbackMappingEnabled = mapping.IsEnabled;
+                    entry.FeedbackIndex = mapping.FeedbackIndex;
+                    entry.FeedbackPointType = mapping.FeedbackPointType;
+                    entry.FeedbackDisplayName = mapping.FeedbackDisplayName;
+                    entry.DefaultCommandMode = mapping.DefaultCommandMode;
+                    entry.TimeoutMs = mapping.TimeoutMs;
+                }
                 PointCatalog.Add(entry);
             }
         }
@@ -472,17 +493,63 @@ public sealed class MainViewModel : ViewModelBase
     {
         if (_pointCatalog.TryGetValue(BuildCatalogKey(transaction.PointType, transaction.PointIndex), out var point))
         {
-            return transaction with
+            transaction = transaction with
             {
                 DisplayName = point.DisplayName,
                 ScadaTag = point.ScadaTag
             };
         }
 
+        if (!string.IsNullOrWhiteSpace(transaction.ExpectedFeedbackPointType) && transaction.ExpectedFeedbackIndex.HasValue)
+        {
+            var mapping = PointCatalog.FirstOrDefault(x =>
+                x.FeedbackMappingEnabled &&
+                x.FeedbackIndex.HasValue &&
+                string.Equals(NormalizePointType(x.FeedbackPointType), NormalizePointType(transaction.ExpectedFeedbackPointType), StringComparison.OrdinalIgnoreCase) &&
+                x.FeedbackIndex.Value == transaction.ExpectedFeedbackIndex.Value);
+
+            if (mapping is not null)
+            {
+                var feedbackName = !string.IsNullOrWhiteSpace(mapping.FeedbackDisplayName)
+                    ? mapping.FeedbackDisplayName
+                    : $"{mapping.FeedbackPointType} {mapping.FeedbackIndex}";
+
+                return transaction with
+                {
+                    FeedbackResult = transaction.FeedbackResult == "Pending"
+                        ? $"Pending feedback: {feedbackName}"
+                        : transaction.FeedbackResult
+                };
+            }
+        }
+
         return transaction;
     }
 
-    private static string BuildCatalogKey(string pointType, ushort index) => $"{pointType}:{index}";
+    private static string BuildCatalogKey(string pointType, ushort index) => $"{NormalizePointType(pointType)}:{index}";
+
+    private static string NormalizePointType(string pointType)
+    {
+        var normalized = pointType.Trim();
+        return normalized switch
+        {
+            "BI" => "Binary Input",
+            "BO" => "Binary Output",
+            "BOS" => "Binary Output Status",
+            "AI" => "Analog Input",
+            "AOS" => "Analog Output Status",
+            _ => normalized
+        };
+    }
+
+    private PointCatalogEntry? FindCommandMapping(ushort commandIndex, string commandPointType)
+    {
+        var normalizedType = NormalizePointType(commandPointType);
+        return PointCatalog.FirstOrDefault(x =>
+            x.FeedbackMappingEnabled &&
+            x.Index == commandIndex &&
+            string.Equals(NormalizePointType(x.PointType), normalizedType, StringComparison.OrdinalIgnoreCase));
+    }
 
     private static string MapStateText(string value, PointCatalogEntry point)
     {
@@ -559,6 +626,21 @@ public sealed class MainViewModel : ViewModelBase
         }
 
         SelectedPointCatalogProfile.Points = PointCatalog.ToList();
+        SelectedPointCatalogProfile.CommandMappings = PointCatalog
+            .Where(x => x.FeedbackMappingEnabled && x.FeedbackIndex.HasValue)
+            .Select(x => new CommandFeedbackMapping
+            {
+                IsEnabled = x.FeedbackMappingEnabled,
+                CommandIndex = x.Index,
+                CommandPointType = x.PointType,
+                CommandDisplayName = x.DisplayName,
+                FeedbackIndex = x.FeedbackIndex!.Value,
+                FeedbackPointType = x.FeedbackPointType,
+                FeedbackDisplayName = x.FeedbackDisplayName,
+                DefaultCommandMode = x.DefaultCommandMode,
+                TimeoutMs = x.TimeoutMs
+            })
+            .ToList();
         var json = JsonSerializer.Serialize(SelectedPointCatalogProfile, _profileSerializerOptions);
         File.WriteAllText(SelectedPointCatalogProfile.FilePath, json);
         RebuildPointCatalogIndex();

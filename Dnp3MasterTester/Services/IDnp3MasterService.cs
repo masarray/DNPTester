@@ -19,5 +19,12 @@ public interface IDnp3MasterService
     Task DemandEventPollAsync();
     Task RunIntegrityPollAsync();
     Task CheckLinkStatusAsync();
-    Task ExecuteBinaryControlAsync(ushort index, CommandMode mode, OpType operation, DateTime preparedAtLocal);
+    Task ExecuteBinaryControlAsync(
+        ushort index,
+        CommandMode mode,
+        OpType operation,
+        DateTime preparedAtLocal,
+        string? expectedFeedbackPointType = null,
+        ushort? expectedFeedbackIndex = null,
+        int? correlationWindowMs = null);
 }

@@ -97,5 +97,18 @@
       "dataConcentratorUnit": "",
       "ioRef": "SIMULATED"
     }
+  ],
+  "commandMappings": [
+    {
+      "isEnabled": true,
+      "commandIndex": 0,
+      "commandPointType": "Binary Output",
+      "commandDisplayName": "Close Command",
+      "feedbackIndex": 0,
+      "feedbackPointType": "Binary Output Status",
+      "feedbackDisplayName": "Close Command Feedback",
+      "defaultCommandMode": "DirectOperate",
+      "timeoutMs": 5000
+    }
   ]
 }

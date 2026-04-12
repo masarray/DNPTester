@@ -188,10 +188,25 @@ public sealed class MainViewModel : ViewModelBase
         {
             foreach (var signal in profile.Signals)
             {
+                var mapping = profile.CommandMappings.FirstOrDefault(x =>
+                    x.IsEnabled &&
+                    x.CommandIndex == signal.Index &&
+                    x.CommandPointType == signal.PointType);
+                if (mapping is not null)
+                {
+                    signal.FeedbackMappingEnabled = mapping.IsEnabled;
+                    signal.FeedbackIndex = mapping.FeedbackIndex;
+                    signal.FeedbackPointType = mapping.FeedbackPointType;
+                    signal.FeedbackDisplayName = mapping.FeedbackDisplayName;
+                    signal.DefaultCommandMode = "DirectOperate";
+                    signal.FeedbackTimeoutMs = 5000;
+                    signal.BinaryCommand.FeedbackDelayMs = mapping.FeedbackDelayMs;
+                }
                 Signals.Add(signal);
             }
         }
 
+        ApplyCommandMappingsToSignals();
         SelectedSignal = Signals.FirstOrDefault();
         StatusText = profile is null
             ? "No signal profile selected."
@@ -205,7 +220,22 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
+        ApplyCommandMappingsToSignals();
         SelectedSignalProfile.Signals = Signals.ToList();
+        SelectedSignalProfile.CommandMappings = Signals
+            .Where(x => x.FeedbackMappingEnabled && x.FeedbackIndex.HasValue)
+            .Select(x => new CommandFeedbackMapping
+            {
+                IsEnabled = x.FeedbackMappingEnabled,
+                CommandIndex = x.Index,
+                CommandPointType = x.PointType,
+                CommandDisplayName = x.Label,
+                FeedbackIndex = x.FeedbackIndex!.Value,
+                FeedbackPointType = x.FeedbackPointType,
+                FeedbackDisplayName = x.FeedbackDisplayName,
+                FeedbackDelayMs = x.BinaryCommand.FeedbackDelayMs
+            })
+            .ToList();
         var json = JsonSerializer.Serialize(SelectedSignalProfile, _profileSerializerOptions);
         File.WriteAllText(SelectedSignalProfile.FilePath, json);
         StatusText = $"Saved signal profile: {SelectedSignalProfile.Name}";
@@ -247,6 +277,8 @@ public sealed class MainViewModel : ViewModelBase
     {
         try
         {
+            ApplyCommandMappingsToSignals();
+            SeedStartupTimestamps();
             _outstationService.Start(Connection, Signals);
             _animationTimer.Start();
             IsRunning = true;
@@ -430,5 +462,50 @@ public sealed class MainViewModel : ViewModelBase
         ReloadProfileCommand.RaiseCanExecuteChanged();
         ToggleSelectedCommand.RaiseCanExecuteChanged();
         NudgeAnalogCommand.RaiseCanExecuteChanged();
+    }
+
+    private void ApplyCommandMappingsToSignals()
+    {
+        foreach (var signal in Signals.Where(x => x.PointType == Dnp3OutstationPointType.BinaryOutputStatus))
+        {
+            signal.BinaryCommand.IsEnabled = false;
+            signal.BinaryCommand.FeedbackIndex = signal.Index;
+            signal.BinaryCommand.FeedbackPointType = Dnp3OutstationPointType.BinaryOutputStatus;
+            signal.BinaryCommand.FeedbackDelayMs = 800;
+        }
+
+        foreach (var commandSignal in Signals.Where(x => x.FeedbackMappingEnabled && x.FeedbackIndex.HasValue))
+        {
+            commandSignal.BinaryCommand.IsEnabled = true;
+            commandSignal.BinaryCommand.FeedbackIndex = commandSignal.FeedbackIndex!.Value;
+            commandSignal.BinaryCommand.FeedbackPointType = commandSignal.FeedbackPointType;
+        }
+    }
+
+    private void SeedStartupTimestamps()
+    {
+        var now = DateTime.Now;
+        foreach (var signal in Signals.Where(ShouldSeedStartupTimestamp))
+        {
+            signal.CaptureEdgeTimestamp(now);
+            signal.NotifyPropertyChanged(nameof(Dnp3SimulatorSignal.RuntimeValueText));
+        }
+
+        AppendLog(new RuntimeLogEntry
+        {
+            TimestampLocal = now,
+            Category = "Startup",
+            Message = $"Seeded startup timestamps for {Signals.Count(ShouldSeedStartupTimestamp)} enabled event-capable points"
+        });
+    }
+
+    private static bool ShouldSeedStartupTimestamp(Dnp3SimulatorSignal signal)
+    {
+        return signal.IsEnabled &&
+               signal.UseTimestamp &&
+               signal.PointType is Dnp3OutstationPointType.BinaryInput
+                   or Dnp3OutstationPointType.AnalogInput
+                   or Dnp3OutstationPointType.BinaryOutputStatus
+                   or Dnp3OutstationPointType.AnalogOutputStatus;
     }
 }

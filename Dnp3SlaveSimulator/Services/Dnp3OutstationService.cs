@@ -401,12 +401,12 @@ public sealed class Dnp3OutstationService : IDisposable
                 Dnp3SimulatorSignal? feedbackSignal;
                 lock (_sync)
                 {
-                    _runtimeSignals.TryGetValue((Dnp3OutstationPointType.BinaryOutputStatus, scenario.FeedbackIndex), out feedbackSignal);
+                    _runtimeSignals.TryGetValue((scenario.FeedbackPointType, scenario.FeedbackIndex), out feedbackSignal);
                 }
 
                 if (feedbackSignal is null)
                 {
-                    PublishLog("Command", $"{origin} feedback skipped: BOS index={scenario.FeedbackIndex} not configured");
+                    PublishLog("Command", $"{origin} feedback skipped: {scenario.FeedbackPointType} index={scenario.FeedbackIndex} not configured");
                     return;
                 }
 
@@ -418,7 +418,7 @@ public sealed class Dnp3OutstationService : IDisposable
                     ? $"{origin} feedback forced to {(feedbackValue ? "ON" : "OFF")} (mismatch)"
                     : $"{origin} feedback applied to {(feedbackValue ? "ON" : "OFF")}";
                 PublishSignalValue(feedbackSignal);
-                PublishLog("Command", $"{origin} feedback BOS index={feedbackSignal.Index} -> {(feedbackValue ? "ON" : "OFF")}");
+                PublishLog("Command", $"{origin} feedback {feedbackSignal.PointType} index={feedbackSignal.Index} -> {(feedbackValue ? "ON" : "OFF")}");
                 SignalCommanded?.Invoke(feedbackSignal.Clone());
             }
             catch (OperationCanceledException)

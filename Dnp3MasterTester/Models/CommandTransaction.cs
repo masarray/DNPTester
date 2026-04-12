@@ -20,11 +20,17 @@ public sealed record CommandTransaction
     public CommandFeedbackEvidenceKind FeedbackEvidenceKind { get; init; } = CommandFeedbackEvidenceKind.None;
     public int? AcceptanceLatencyMs { get; init; }
     public int? FeedbackLatencyMs { get; init; }
+    public string? ExpectedFeedbackPointType { get; init; }
+    public ushort? ExpectedFeedbackIndex { get; init; }
     public bool IsTerminal { get; init; }
     public IReadOnlyList<CommandLifecycleEntry> Lifecycle { get; init; } = Array.Empty<CommandLifecycleEntry>();
 
     public string PreparedAtText => PreparedAtLocal.ToString("yyyy-MM-dd HH:mm:ss.fff");
-    public string PointLabel => string.IsNullOrWhiteSpace(ScadaTag) ? $"{PointType} {PointIndex}" : $"{ScadaTag} | {DisplayName}";
+    public string PointLabel => !string.IsNullOrWhiteSpace(ScadaTag) && !string.IsNullOrWhiteSpace(DisplayName)
+        ? $"{ScadaTag} | {DisplayName}"
+        : !string.IsNullOrWhiteSpace(DisplayName)
+            ? DisplayName
+            : $"{PointType} {PointIndex}";
     public string RequestedAtText => RequestedAtLocal?.ToString("yyyy-MM-dd HH:mm:ss.fff") ?? "-";
     public string AcceptanceAtText => AcceptanceAtLocal?.ToString("yyyy-MM-dd HH:mm:ss.fff") ?? "-";
     public string FeedbackAtText => FeedbackAtLocal?.ToString("yyyy-MM-dd HH:mm:ss.fff") ?? "-";

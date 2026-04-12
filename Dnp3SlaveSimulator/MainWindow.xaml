@@ -247,7 +247,12 @@
                             <DataGridTextColumn Width="110" Header="Toggle s" Binding="{Binding ToggleIntervalSeconds}" />
                             <DataGridCheckBoxColumn Width="90" Header="Timestamp" Binding="{Binding UseTimestamp}" />
                             <DataGridCheckBoxColumn Width="95" Header="Cmd Sim" Binding="{Binding BinaryCommand.IsEnabled}" />
-                            <DataGridTextColumn Width="95" Header="Fb Index" Binding="{Binding BinaryCommand.FeedbackIndex}" />
+                            <DataGridCheckBoxColumn Width="70" Header="Use Fb" Binding="{Binding FeedbackMappingEnabled}" />
+                            <DataGridTextColumn Width="220" Header="Feedback Control" Binding="{Binding FeedbackControl}" IsReadOnly="True" />
+                            <DataGridTextColumn Width="95" Header="Fb Index" Binding="{Binding FeedbackIndex}" />
+                            <DataGridComboBoxColumn Width="140" Header="Fb Type" ItemsSource="{Binding Source={StaticResource PointTypeValues}}" SelectedItemBinding="{Binding FeedbackPointType}" />
+                            <DataGridTextColumn Width="220" Header="Feedback Name" Binding="{Binding FeedbackDisplayName}" />
+                            <DataGridTextColumn Width="110" Header="Timeout ms" Binding="{Binding FeedbackTimeoutMs}" />
                             <DataGridComboBoxColumn Width="160" Header="Cmd Behavior" ItemsSource="{Binding Source={StaticResource BinaryCommandBehaviorValues}}" SelectedItemBinding="{Binding BinaryCommand.Behavior}" />
                             <DataGridTextColumn Width="110" Header="Fb Delay ms" Binding="{Binding BinaryCommand.FeedbackDelayMs}" />
                             <DataGridTextColumn Width="130" Header="Command Status" Binding="{Binding LastCommandStatus}" IsReadOnly="True" />

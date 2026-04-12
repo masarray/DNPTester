@@ -16,5 +16,16 @@ public sealed class PointCatalogEntry
     public string DnpClass { get; set; } = string.Empty;
     public string DataConcentratorUnit { get; set; } = string.Empty;
     public string IoRef { get; set; } = string.Empty;
+    public bool FeedbackMappingEnabled { get; set; }
+    public ushort? FeedbackIndex { get; set; }
+    public string FeedbackPointType { get; set; } = string.Empty;
+    public string FeedbackDisplayName { get; set; } = string.Empty;
+    public string DefaultCommandMode { get; set; } = "DirectOperate";
+    public int TimeoutMs { get; set; } = 5000;
+    public string FeedbackControl => FeedbackMappingEnabled && FeedbackIndex.HasValue
+        ? string.IsNullOrWhiteSpace(FeedbackDisplayName)
+            ? $"{FeedbackPointType} {FeedbackIndex.Value}"
+            : $"{FeedbackIndex.Value} | {FeedbackDisplayName}"
+        : string.Empty;
     public string DisplayLabel => string.IsNullOrWhiteSpace(ScadaTag) ? DisplayName : $"{ScadaTag} | {DisplayName}";
 }

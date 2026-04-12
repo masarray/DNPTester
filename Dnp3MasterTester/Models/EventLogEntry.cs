@@ -19,6 +19,10 @@ public sealed class EventLogEntry
     public string Detail { get; set; } = string.Empty;
     public string SourceReasonText => SourceReason.ToString();
     public string PointLabel => Index.HasValue
-        ? string.IsNullOrWhiteSpace(ScadaTag) ? $"{PointType} {Index}" : $"{ScadaTag} | {DisplayName}"
+        ? !string.IsNullOrWhiteSpace(ScadaTag) && !string.IsNullOrWhiteSpace(DisplayName)
+            ? $"{ScadaTag} | {DisplayName}"
+            : !string.IsNullOrWhiteSpace(DisplayName)
+                ? DisplayName
+                : $"{PointType} {Index}"
         : PointType;
 }

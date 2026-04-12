@@ -28,6 +28,12 @@ public sealed class Dnp3SimulatorSignal : ViewModelBase
     private SignalEventTimestampState _eventTimestamp = SignalEventTimestampState.Invalid();
     private DateTime _nextAnimationAt = DateTime.Now;
     private bool _ascending = true;
+    private bool _feedbackMappingEnabled;
+    private ushort? _feedbackIndex;
+    private Dnp3OutstationPointType _feedbackPointType = Dnp3OutstationPointType.BinaryInput;
+    private string _feedbackDisplayName = string.Empty;
+    private string _defaultCommandMode = "DirectOperate";
+    private int _feedbackTimeoutMs = 5000;
 
     public ushort Index { get => _index; set => SetProperty(ref _index, value); }
     public string Label { get => _label; set => SetProperty(ref _label, value); }
@@ -50,6 +56,17 @@ public sealed class Dnp3SimulatorSignal : ViewModelBase
     public BinaryCommandScenario BinaryCommand { get => _binaryCommand; set => SetProperty(ref _binaryCommand, value); }
     public DateTime LastUpdatedLocal { get => _lastUpdatedLocal; set => SetProperty(ref _lastUpdatedLocal, value); }
     public SignalEventTimestampState EventTimestamp { get => _eventTimestamp; set => SetProperty(ref _eventTimestamp, value); }
+    public bool FeedbackMappingEnabled { get => _feedbackMappingEnabled; set => SetProperty(ref _feedbackMappingEnabled, value); }
+    public ushort? FeedbackIndex { get => _feedbackIndex; set => SetProperty(ref _feedbackIndex, value); }
+    public Dnp3OutstationPointType FeedbackPointType { get => _feedbackPointType; set => SetProperty(ref _feedbackPointType, value); }
+    public string FeedbackDisplayName { get => _feedbackDisplayName; set => SetProperty(ref _feedbackDisplayName, value); }
+    public string DefaultCommandMode { get => _defaultCommandMode; set => SetProperty(ref _defaultCommandMode, value); }
+    public int FeedbackTimeoutMs { get => _feedbackTimeoutMs; set => SetProperty(ref _feedbackTimeoutMs, value); }
+    public string FeedbackControl => FeedbackMappingEnabled && FeedbackIndex.HasValue
+        ? string.IsNullOrWhiteSpace(FeedbackDisplayName)
+            ? $"{FeedbackPointType} {FeedbackIndex.Value}"
+            : $"{FeedbackIndex.Value} | {FeedbackDisplayName}"
+        : string.Empty;
 
     public bool IsBinaryLike => PointType is Dnp3OutstationPointType.BinaryInput or Dnp3OutstationPointType.BinaryOutputStatus;
     public bool IsAnalogLike => PointType is Dnp3OutstationPointType.AnalogInput or Dnp3OutstationPointType.AnalogOutputStatus;
