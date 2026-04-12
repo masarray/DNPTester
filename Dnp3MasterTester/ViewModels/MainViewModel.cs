@@ -36,6 +36,7 @@ public sealed class MainViewModel : ViewModelBase
         Settings = new ConnectionSettings();
         PointCatalogProfiles = LoadPointCatalogProfiles();
         PointCatalog = new ObservableCollection<PointCatalogEntry>();
+        SerialPortOptions = new ObservableCollection<string>();
         TransportTypes = Enum.GetValues(typeof(DnpTransportType)).Cast<DnpTransportType>().ToArray();
         PollingProfiles = Enum.GetValues(typeof(PollingProfileKind)).Cast<PollingProfileKind>().ToArray();
         PointTypeOptions = ["Binary Input", "Binary Output", "Binary Output Status", "Analog Input", "Analog Output Status"];
@@ -45,7 +46,11 @@ public sealed class MainViewModel : ViewModelBase
         SerialFlowControlOptions = Enum.GetValues(typeof(FlowControl)).Cast<FlowControl>().ToArray();
         CommandModes = Enum.GetValues(typeof(CommandMode)).Cast<CommandMode>().ToArray();
         BinaryOperations = new[] { OpType.LatchOn, OpType.LatchOff, OpType.PulseOn, OpType.PulseOff };
-        Settings.PropertyChanged += (_, _) => RaiseConnectionSummaryChanged();
+        Settings.PropertyChanged += (_, _) =>
+        {
+            RaiseConnectionSummaryChanged();
+            RaisePropertyChanged(nameof(SerialPortAvailabilityText));
+        };
 
         ConnectCommand = new RelayCommand(_ => ConnectAsync(), _ => !_isBusy && !_service.IsConnected);
         DisconnectCommand = new RelayCommand(_ => DisconnectAsync(), _ => !_isBusy && _service.IsConnected);
@@ -57,6 +62,8 @@ public sealed class MainViewModel : ViewModelBase
         RemovePointCatalogEntryCommand = new RelayCommand(_ => RemovePointCatalogEntry(), _ => SelectedPointCatalogEntry is not null);
         SavePointCatalogProfileCommand = new RelayCommand(_ => SavePointCatalogProfile(), _ => SelectedPointCatalogProfile is not null);
         ReloadPointCatalogProfileCommand = new RelayCommand(_ => ReloadPointCatalogProfile(), _ => SelectedPointCatalogProfile is not null);
+        RefreshSerialPortsCommand = new RelayCommand(_ => RefreshSerialPorts());
+        RefreshSerialPorts();
         SelectedPointCatalogProfile = PointCatalogProfiles.FirstOrDefault();
 
         _service.ConnectionStateChanged += (_, snapshot) => Dispatch(() =>
@@ -78,6 +85,7 @@ public sealed class MainViewModel : ViewModelBase
     public ConnectionSettings Settings { get; }
     public ObservableCollection<PointCatalogProfile> PointCatalogProfiles { get; }
     public ObservableCollection<PointCatalogEntry> PointCatalog { get; }
+    public ObservableCollection<string> SerialPortOptions { get; }
     public IReadOnlyList<DnpTransportType> TransportTypes { get; }
     public IReadOnlyList<PollingProfileKind> PollingProfiles { get; }
     public IReadOnlyList<string> PointTypeOptions { get; }
@@ -98,6 +106,7 @@ public sealed class MainViewModel : ViewModelBase
     public string ConnectionTarget => Settings.Transport == DnpTransportType.Serial ? Settings.GetSerialSummary() : Settings.Endpoint;
     public string PollingProfile => Settings.GetEffectivePollingProfile().Summary;
     public string SerialProfile => Settings.GetSerialSummary();
+    public string SerialPortAvailabilityText => BuildSerialPortAvailabilityText();
     public bool IsTcpTransport => Settings.Transport == DnpTransportType.Tcp;
     public bool IsSerialTransport => Settings.Transport == DnpTransportType.Serial;
     public string LatestTransactionId => LatestCommandTransaction?.TransactionId ?? "-";
@@ -124,6 +133,7 @@ public sealed class MainViewModel : ViewModelBase
     public RelayCommand RemovePointCatalogEntryCommand { get; }
     public RelayCommand SavePointCatalogProfileCommand { get; }
     public RelayCommand ReloadPointCatalogProfileCommand { get; }
+    public RelayCommand RefreshSerialPortsCommand { get; }
 
     public string ConnectionState
     {
@@ -420,6 +430,59 @@ public sealed class MainViewModel : ViewModelBase
         RaisePropertyChanged(nameof(SerialProfile));
         RaisePropertyChanged(nameof(IsTcpTransport));
         RaisePropertyChanged(nameof(IsSerialTransport));
+    }
+
+    private void RefreshSerialPorts()
+    {
+        var ports = System.IO.Ports.SerialPort.GetPortNames()
+            .OrderBy(name => ExtractComPortNumber(name))
+            .ThenBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (!string.IsNullOrWhiteSpace(Settings.SerialPort) &&
+            !ports.Contains(Settings.SerialPort, StringComparer.OrdinalIgnoreCase))
+        {
+            ports.Insert(0, Settings.SerialPort);
+        }
+
+        SerialPortOptions.Clear();
+        foreach (var port in ports)
+        {
+            SerialPortOptions.Add(port);
+        }
+
+        RaisePropertyChanged(nameof(SerialPortAvailabilityText));
+        RaisePropertyChanged(nameof(SerialProfile));
+    }
+
+    private string BuildSerialPortAvailabilityText()
+    {
+        if (SerialPortOptions.Count == 0)
+        {
+            return "No COM port detected on this laptop.";
+        }
+
+        var selected = Settings.SerialPort;
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            return $"{SerialPortOptions.Count} COM port(s) detected.";
+        }
+
+        var detected = System.IO.Ports.SerialPort.GetPortNames().Contains(selected, StringComparer.OrdinalIgnoreCase);
+        return detected
+            ? $"{selected} is currently available."
+            : $"{selected} is selected in settings but not currently detected.";
+    }
+
+    private static int ExtractComPortNumber(string portName)
+    {
+        if (portName.StartsWith("COM", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(portName[3..], out var number))
+        {
+            return number;
+        }
+
+        return int.MaxValue;
     }
 
     private ObservableCollection<PointCatalogProfile> LoadPointCatalogProfiles()

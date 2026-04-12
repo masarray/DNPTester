@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Ports;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
@@ -44,14 +45,25 @@ public sealed class MainViewModel : ViewModelBase
         _animationTimer.Tick += AnimationTimer_Tick;
 
         Connection = new Dnp3SlaveConnectionSettings();
-        Connection.PropertyChanged += (_, _) => RaisePropertyChanged(nameof(ConnectionSummary));
+        Connection.PropertyChanged += (_, _) =>
+        {
+            RaisePropertyChanged(nameof(ConnectionSummary));
+            RaisePropertyChanged(nameof(SerialPortAvailabilityText));
+            RaisePropertyChanged(nameof(IsTcpTransport));
+            RaisePropertyChanged(nameof(IsSerialTransport));
+        };
         Signals = new ObservableCollection<Dnp3SimulatorSignal>();
         SignalProfiles = LoadSignalProfiles();
         RuntimeLog = new ObservableCollection<RuntimeLogEntry>();
+        SerialPortOptions = new ObservableCollection<string>();
 
         TransportOptions = Enum.GetValues(typeof(Dnp3SlaveTransportType)).Cast<Dnp3SlaveTransportType>().ToArray();
         PointTypeOptions = Enum.GetValues(typeof(Dnp3OutstationPointType)).Cast<Dnp3OutstationPointType>().ToArray();
         EventClassOptions = Enum.GetValues(typeof(Dnp3EventClassModel)).Cast<Dnp3EventClassModel>().ToArray();
+        SerialDataBitOptions = Enum.GetValues(typeof(dnp3.DataBits)).Cast<dnp3.DataBits>().ToArray();
+        SerialStopBitOptions = Enum.GetValues(typeof(dnp3.StopBits)).Cast<dnp3.StopBits>().ToArray();
+        SerialParityOptions = Enum.GetValues(typeof(dnp3.Parity)).Cast<dnp3.Parity>().ToArray();
+        SerialFlowControlOptions = Enum.GetValues(typeof(dnp3.FlowControl)).Cast<dnp3.FlowControl>().ToArray();
         AnalogAnimationOptions = Enum.GetValues(typeof(AnalogAnimationKind)).Cast<AnalogAnimationKind>().ToArray();
         DiscreteAnimationOptions = Enum.GetValues(typeof(DiscreteAnimationKind)).Cast<DiscreteAnimationKind>().ToArray();
         BinaryCommandBehaviorOptions = Enum.GetValues(typeof(BinaryCommandBehavior)).Cast<BinaryCommandBehavior>().ToArray();
@@ -65,6 +77,9 @@ public sealed class MainViewModel : ViewModelBase
         ToggleSelectedCommand = new RelayCommand(_ => ToggleSelected(), _ => SelectedSignal?.IsBinaryLike == true);
         NudgeAnalogCommand = new RelayCommand(_ => NudgeAnalog(), _ => SelectedSignal?.IsAnalogLike == true);
         ClearLogCommand = new RelayCommand(_ => RuntimeLog.Clear());
+        RefreshSerialPortsCommand = new RelayCommand(_ => RefreshSerialPorts(), _ => !IsRunning);
+
+        RefreshSerialPorts();
 
         SelectedSignalProfile = SignalProfiles.FirstOrDefault();
         if (SelectedSignalProfile is null)
@@ -77,10 +92,15 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<Dnp3SimulatorSignal> Signals { get; }
     public ObservableCollection<SignalDatabaseProfile> SignalProfiles { get; }
     public ObservableCollection<RuntimeLogEntry> RuntimeLog { get; }
+    public ObservableCollection<string> SerialPortOptions { get; }
 
     public Dnp3SlaveTransportType[] TransportOptions { get; }
     public Dnp3OutstationPointType[] PointTypeOptions { get; }
     public Dnp3EventClassModel[] EventClassOptions { get; }
+    public dnp3.DataBits[] SerialDataBitOptions { get; }
+    public dnp3.StopBits[] SerialStopBitOptions { get; }
+    public dnp3.Parity[] SerialParityOptions { get; }
+    public dnp3.FlowControl[] SerialFlowControlOptions { get; }
     public AnalogAnimationKind[] AnalogAnimationOptions { get; }
     public DiscreteAnimationKind[] DiscreteAnimationOptions { get; }
     public BinaryCommandBehavior[] BinaryCommandBehaviorOptions { get; }
@@ -94,6 +114,7 @@ public sealed class MainViewModel : ViewModelBase
     public RelayCommand ToggleSelectedCommand { get; }
     public RelayCommand NudgeAnalogCommand { get; }
     public RelayCommand ClearLogCommand { get; }
+    public RelayCommand RefreshSerialPortsCommand { get; }
 
     public string StatusText
     {
@@ -122,13 +143,16 @@ public sealed class MainViewModel : ViewModelBase
     }
 
     public bool CanEditSettings => !IsRunning;
+    public bool IsTcpTransport => Connection.Transport == Dnp3SlaveTransportType.TcpServer;
+    public bool IsSerialTransport => Connection.Transport == Dnp3SlaveTransportType.Serial;
 
     public string SignalProfileName => SelectedSignalProfile?.Name ?? "No Signal Profile";
+    public string SerialPortAvailabilityText => BuildSerialPortAvailabilityText();
 
     public string ConnectionSummary =>
         Connection.Transport == Dnp3SlaveTransportType.TcpServer
             ? $"TCP server on {Connection.Endpoint} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress} | Profile {SignalProfileName} | Unsol {(Connection.EnableUnsolicited ? DescribeUnsolicitedClasses() : "Off")}"
-            : $"Serial {Connection.SerialPort} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress} | Profile {SignalProfileName} | Unsol {(Connection.EnableUnsolicited ? DescribeUnsolicitedClasses() : "Off")}";
+            : $"Serial {Connection.GetSerialSummary()} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress} | Profile {SignalProfileName} | Unsol {(Connection.EnableUnsolicited ? DescribeUnsolicitedClasses() : "Off")}";
 
     public SignalDatabaseProfile? SelectedSignalProfile
     {
@@ -281,6 +305,19 @@ public sealed class MainViewModel : ViewModelBase
     {
         try
         {
+            var errors = Connection.Validate();
+            if (errors.Count != 0)
+            {
+                StatusText = string.Join(" ", errors);
+                AppendLog(new RuntimeLogEntry
+                {
+                    TimestampLocal = DateTime.Now,
+                    Category = "Validation",
+                    Message = StatusText
+                });
+                return;
+            }
+
             ApplyCommandMappingsToSignals();
             SeedStartupTimestamps();
             _outstationService.Start(Connection, Signals);
@@ -553,5 +590,58 @@ public sealed class MainViewModel : ViewModelBase
         }
 
         return classes.Count == 0 ? "On (none)" : $"On ({string.Join("/", classes)})";
+    }
+
+    private void RefreshSerialPorts()
+    {
+        var ports = System.IO.Ports.SerialPort.GetPortNames()
+            .OrderBy(name => ExtractComPortNumber(name))
+            .ThenBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (!string.IsNullOrWhiteSpace(Connection.SerialPort) &&
+            !ports.Contains(Connection.SerialPort, StringComparer.OrdinalIgnoreCase))
+        {
+            ports.Insert(0, Connection.SerialPort);
+        }
+
+        SerialPortOptions.Clear();
+        foreach (var port in ports)
+        {
+            SerialPortOptions.Add(port);
+        }
+
+        RaisePropertyChanged(nameof(SerialPortAvailabilityText));
+        RaisePropertyChanged(nameof(ConnectionSummary));
+    }
+
+    private string BuildSerialPortAvailabilityText()
+    {
+        if (SerialPortOptions.Count == 0)
+        {
+            return "No COM port detected on this laptop.";
+        }
+
+        var selected = Connection.SerialPort;
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            return $"{SerialPortOptions.Count} COM port(s) detected.";
+        }
+
+        var detected = System.IO.Ports.SerialPort.GetPortNames().Contains(selected, StringComparer.OrdinalIgnoreCase);
+        return detected
+            ? $"{selected} is currently available."
+            : $"{selected} is selected from profile but not currently detected.";
+    }
+
+    private static int ExtractComPortNumber(string portName)
+    {
+        if (portName.StartsWith("COM", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(portName[3..], out var number))
+        {
+            return number;
+        }
+
+        return int.MaxValue;
     }
 }

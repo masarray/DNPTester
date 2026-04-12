@@ -14,6 +14,16 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
     }
 
+    private void OpenConnectionSetup_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ConnectionSettingsWindow(_viewModel)
+        {
+            Owner = this
+        };
+
+        dialog.ShowDialog();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _viewModel.StopRuntimeCommand.Execute(null);

@@ -40,18 +40,16 @@
         </ObjectDataProvider>
     </Window.Resources>
 
-    <Grid Background="#F3F3F3">
+    <Grid Background="{StaticResource AppBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border Margin="16"
+        <Border Margin="16,16,16,12"
                 Padding="20"
-                Background="White"
-                BorderBrush="#D9D9D9"
-                BorderThickness="1">
+                Style="{StaticResource CardBorderStyle}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -61,14 +59,10 @@
                 <StackPanel>
                     <TextBlock FontSize="28"
                                FontWeight="SemiBold"
-                               Foreground="#1F1F1F"
                                Text="DNP3 Slave Simulator" />
                     <TextBlock Margin="0,8,0,0"
-                               Foreground="#4B4B4B"
-                               Text="Outstation simulator for interoperability, FAT, measurement animation, binary status toggle, and DNP3 command lifecycle validation." />
-                    <TextBlock Margin="0,10,0,0"
-                               Foreground="#5C5C5C"
-                               Text="{Binding ConnectionSummary}" />
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Text="Outstation simulator for FAT, interoperability, measurement animation, and DNP3 command lifecycle validation." />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1"
@@ -76,11 +70,16 @@
                             VerticalAlignment="Top">
                     <StackPanel Margin="0,0,12,0"
                                 VerticalAlignment="Center">
-                        <TextBlock Foreground="#5C5C5C"
+                        <TextBlock Foreground="{StaticResource TextMutedBrush}"
                                    Text="Signal Profile" />
                         <TextBlock FontWeight="SemiBold"
-                                   Text="{Binding SignalProfileName, Mode=OneWay}" />
+                                   Text="{Binding SignalProfileName}" />
                     </StackPanel>
+                    <Button Width="108"
+                            Height="38"
+                            Margin="0,0,8,0"
+                            Click="OpenConnectionSetup_Click"
+                            Content="Configure" />
                     <Button Width="120"
                             Height="38"
                             Margin="0,0,8,0"
@@ -95,89 +94,28 @@
         </Border>
 
         <Border Grid.Row="1"
-                Margin="16,0,16,16"
-                Padding="16"
-                Background="White"
-                BorderBrush="#D9D9D9"
-                BorderThickness="1">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="150" />
-                    <ColumnDefinition Width="220" />
-                    <ColumnDefinition Width="120" />
-                    <ColumnDefinition Width="110" />
-                    <ColumnDefinition Width="120" />
-                    <ColumnDefinition Width="120" />
-                    <ColumnDefinition Width="150" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,12,6" Text="Transport" />
-                <ComboBox Grid.Row="1" Grid.Column="0" Margin="0,0,12,0" ItemsSource="{Binding TransportOptions}" SelectedItem="{Binding Connection.Transport}" IsEnabled="{Binding CanEditSettings}" />
-
-                <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,0,12,6" Text="TCP Endpoint" />
-                <TextBox Grid.Row="1" Grid.Column="1" Margin="0,0,12,0" Text="{Binding Connection.Endpoint}" IsEnabled="{Binding CanEditSettings}" />
-
-                <TextBlock Grid.Row="0" Grid.Column="2" Margin="0,0,12,6" Text="Serial Port" />
-                <TextBox Grid.Row="1" Grid.Column="2" Margin="0,0,12,0" Text="{Binding Connection.SerialPort}" IsEnabled="{Binding CanEditSettings}" />
-
-                <TextBlock Grid.Row="0" Grid.Column="3" Margin="0,0,12,6" Text="Master Addr" />
-                <TextBox Grid.Row="1" Grid.Column="3" Margin="0,0,12,0" Text="{Binding Connection.MasterAddress}" IsEnabled="{Binding CanEditSettings}" />
-
-                <TextBlock Grid.Row="0" Grid.Column="4" Margin="0,0,12,6" Text="Outstation Addr" />
-                <TextBox Grid.Row="1" Grid.Column="4" Margin="0,0,12,0" Text="{Binding Connection.OutstationAddress}" IsEnabled="{Binding CanEditSettings}" />
-
-                <TextBlock Grid.Row="0" Grid.Column="5" Margin="0,0,12,6" Text="Port Retry (s)" />
-                <TextBox Grid.Row="1" Grid.Column="5" Margin="0,0,12,0" Text="{Binding Connection.PortRetrySeconds}" IsEnabled="{Binding CanEditSettings}" />
-
-                <StackPanel Grid.Row="0"
-                            Grid.RowSpan="2"
-                            Grid.Column="6"
-                            Margin="0,2,12,0">
-                    <CheckBox Margin="0,0,0,6"
-                              IsChecked="{Binding Connection.EnableUnsolicited}"
-                              IsEnabled="{Binding CanEditSettings}"
-                              Content="Enable Unsolicited" />
-                    <StackPanel Orientation="Horizontal">
-                        <CheckBox Margin="0,0,10,0"
-                                  IsChecked="{Binding Connection.UnsolicitedClass1}"
-                                  IsEnabled="{Binding CanEditSettings}"
-                                  Content="Class 1" />
-                        <CheckBox Margin="0,0,10,0"
-                                  IsChecked="{Binding Connection.UnsolicitedClass2}"
-                                  IsEnabled="{Binding CanEditSettings}"
-                                  Content="Class 2" />
-                        <CheckBox IsChecked="{Binding Connection.UnsolicitedClass3}"
-                                  IsEnabled="{Binding CanEditSettings}"
-                                  Content="Class 3" />
-                    </StackPanel>
-                </StackPanel>
-
-                <TextBlock Grid.Row="0"
-                           Grid.RowSpan="2"
-                           Grid.Column="7"
-                           HorizontalAlignment="Right"
-                           VerticalAlignment="Bottom"
-                           Foreground="#5B5B5B"
-                           Text="Manage signal profiles and points from the Point Database panel below." />
-            </Grid>
+                Margin="16,0,16,12"
+                Padding="12,10"
+                Style="{StaticResource CardBorderStyle}">
+            <TextBlock FontWeight="SemiBold"
+                       Text="{Binding ConnectionSummary}" />
         </Border>
 
         <Grid Grid.Row="2" Margin="16,0,16,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="260" />
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2.5*" />
-                <ColumnDefinition Width="1.35*" />
+                <ColumnDefinition Width="2.4*" />
+                <ColumnDefinition Width="1.2*" />
             </Grid.ColumnDefinitions>
 
-            <Border Margin="0,0,12,0"
+            <Border Grid.Row="0"
+                    Grid.Column="0"
+                    Margin="0,0,12,12"
                     Padding="16"
-                    Background="White"
-                    BorderBrush="#D9D9D9"
-                    BorderThickness="1">
+                    Style="{StaticResource CardBorderStyle}">
                 <DockPanel>
                     <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
@@ -205,8 +143,8 @@
                         <TextBlock Grid.Column="1"
                                    Margin="0,28,12,0"
                                    VerticalAlignment="Center"
-                                   Foreground="#5B5B5B"
-                                   Text="Profile JSON is loaded at startup. Use default for debugging and ElectraNet for FAT validation." />
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Text="Use default for debugging and ElectraNet for FAT validation." />
 
                         <Button Grid.Column="2"
                                 Width="88"
@@ -245,6 +183,7 @@
                                 Command="{Binding NudgeAnalogCommand}"
                                 Content="Nudge Analog" />
                     </Grid>
+
                     <DataGrid ItemsSource="{Binding Signals}"
                               SelectedItem="{Binding SelectedSignal}"
                               AutoGenerateColumns="False"
@@ -287,72 +226,69 @@
                 </DockPanel>
             </Border>
 
-            <Grid Grid.Column="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+            <Border Grid.Row="0"
+                    Grid.Column="1"
+                    Margin="0,0,0,12"
+                    Padding="16"
+                    Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock FontSize="18"
+                               FontWeight="SemiBold"
+                               Text="Session" />
+                    <TextBlock Margin="0,12,0,4"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Text="Runtime State" />
+                    <TextBlock FontSize="24"
+                               FontWeight="SemiBold"
+                               Text="{Binding RuntimeState}" />
+                    <TextBlock Margin="0,12,0,4"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Text="Status" />
+                    <TextBlock TextWrapping="Wrap"
+                               Text="{Binding StatusText}" />
+                    <TextBlock Margin="0,12,0,4"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Text="Communication Summary" />
+                    <TextBlock TextWrapping="Wrap"
+                               Text="{Binding ConnectionSummary}" />
+                </StackPanel>
+            </Border>
 
-                <Border Padding="16"
-                        Margin="0,0,0,12"
-                        Background="White"
-                        BorderBrush="#D9D9D9"
-                        BorderThickness="1">
-                    <StackPanel>
+            <Border Grid.Row="1"
+                    Grid.ColumnSpan="2"
+                    Padding="16"
+                    Style="{StaticResource CardBorderStyle}">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <TextBlock FontSize="18"
                                    FontWeight="SemiBold"
-                                   Text="Session" />
-                        <TextBlock Margin="0,12,0,4"
-                                   Foreground="#5B5B5B"
-                                   Text="Runtime State" />
-                        <TextBlock FontSize="24"
-                                   FontWeight="SemiBold"
-                                   Text="{Binding RuntimeState}" />
-                        <TextBlock Margin="0,12,0,4"
-                                   Foreground="#5B5B5B"
-                                   Text="Status" />
-                        <TextBlock TextWrapping="Wrap"
-                                   Text="{Binding StatusText}" />
-                    </StackPanel>
-                </Border>
+                                   Text="Runtime Log" />
+                        <Button Grid.Column="1"
+                                Width="88"
+                                Height="30"
+                                Command="{Binding ClearLogCommand}"
+                                Content="Clear" />
+                    </Grid>
 
-                <Border Grid.Row="1"
-                        Padding="16"
-                        Background="White"
-                        BorderBrush="#D9D9D9"
-                        BorderThickness="1">
-                    <DockPanel>
-                        <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock FontSize="18"
-                                       FontWeight="SemiBold"
-                                       Text="Runtime Log" />
-                            <Button Grid.Column="1"
-                                    Width="88"
-                                    Height="30"
-                                    Command="{Binding ClearLogCommand}"
-                                    Content="Clear" />
-                        </Grid>
-
-                        <DataGrid ItemsSource="{Binding RuntimeLog}"
-                                  AutoGenerateColumns="False"
-                                  CanUserAddRows="False"
-                                  HeadersVisibility="Column"
-                                  GridLinesVisibility="Horizontal"
-                                  RowHeaderWidth="0"
-                                  IsReadOnly="True">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Width="160" Header="Timestamp" Binding="{Binding TimestampLocal, StringFormat=yyyy-MM-dd HH:mm:ss.fff}" />
-                                <DataGridTextColumn Width="110" Header="Category" Binding="{Binding Category}" />
-                                <DataGridTextColumn Width="*" Header="Message" Binding="{Binding Message}" />
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </DockPanel>
-                </Border>
-            </Grid>
+                    <DataGrid ItemsSource="{Binding RuntimeLog}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              RowHeaderWidth="0"
+                              IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Width="180" Header="Timestamp" Binding="{Binding TimestampLocal, StringFormat=yyyy-MM-dd HH:mm:ss.fff}" />
+                            <DataGridTextColumn Width="120" Header="Category" Binding="{Binding Category}" />
+                            <DataGridTextColumn Width="*" Header="Message" Binding="{Binding Message}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
         </Grid>
     </Grid>
 </Window>

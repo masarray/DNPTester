@@ -53,7 +53,7 @@ public sealed class Dnp3OutstationService : IDisposable
                 _outstation = Outstation.CreateSerialSession2(
                     _runtime,
                     settings.SerialPort,
-                    new SerialSettings(),
+                    GetSerialSettings(settings),
                     TimeSpan.FromSeconds(Math.Max(1, settings.PortRetrySeconds)),
                     config,
                     new OutstationApplicationAdapter(this),
@@ -211,6 +211,16 @@ public sealed class Dnp3OutstationService : IDisposable
             new EventBufferConfig(100, 20, 40, 10, 10, 40, 20, 0))
             .WithFeatures(features)
             .WithDecodeLevel(DecodeLevel.Nothing().WithApplication(AppDecodeLevel.ObjectValues));
+    }
+
+    private static SerialSettings GetSerialSettings(Dnp3SlaveConnectionSettings settings)
+    {
+        return new SerialSettings()
+            .WithBaudRate(settings.SerialBaudRate)
+            .WithDataBits(settings.SerialDataBits)
+            .WithStopBits(settings.SerialStopBits)
+            .WithParity(settings.SerialParity)
+            .WithFlowControl(settings.SerialFlowControl);
     }
 
     private static EventClass GetEventClass(Dnp3EventClassModel eventClass)

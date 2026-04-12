@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="dnp3" Version="1.7.0-RC1" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>

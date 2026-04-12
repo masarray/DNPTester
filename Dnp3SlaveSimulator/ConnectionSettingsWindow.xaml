@@ -1,9 +1,9 @@
-<Window x:Class="Dnp3MasterTester.ConnectionSettingsWindow"
+<Window x:Class="Dnp3SlaveSimulator.ConnectionSettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Connection Setup"
+        Title="Connection Settings"
         Width="820"
-        Height="760"
+        Height="700"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResizeWithGrip">
     <Window.Resources>
@@ -28,6 +28,7 @@
             </Style.Triggers>
         </Style>
     </Window.Resources>
+
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -36,12 +37,12 @@
         </Grid.RowDefinitions>
 
         <StackPanel Margin="0,0,0,12">
-            <TextBlock Text="Connection Setup"
+            <TextBlock Text="Connection Settings"
                        FontSize="18"
                        FontWeight="Bold" />
             <TextBlock Margin="0,6,0,0"
                        Foreground="{StaticResource TextMutedBrush}"
-                       Text="Edit transport, addresses, polling behavior, and transport-specific TCP or serial parameters for the current DNP3 session."
+                       Text="Edit transport, endpoint, serial parameters, addressing, retry behavior, and unsolicited communication settings for the current slave session."
                        TextWrapping="Wrap" />
         </StackPanel>
 
@@ -53,11 +54,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
+
                 <Border Grid.Row="0"
                         Style="{StaticResource CardBorderStyle}"
                         Padding="16"
@@ -66,82 +64,41 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                            <TextBlock Text="Polling Profile" />
-                            <ComboBox ItemsSource="{Binding PollingProfiles}"
-                                      SelectedItem="{Binding Settings.PollingProfile}" />
+                            <TextBlock Text="Transport" />
+                            <ComboBox ItemsSource="{Binding TransportOptions}"
+                                      SelectedItem="{Binding Connection.Transport}" />
                         </StackPanel>
 
-                        <StackPanel Grid.Column="1">
-                            <TextBlock Text="Transport" />
-                            <ComboBox ItemsSource="{Binding TransportTypes}"
-                                      SelectedItem="{Binding Settings.Transport}" />
+                        <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                            <TextBlock Text="Master Address" />
+                            <TextBox Text="{Binding Connection.MasterAddress, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Outstation Address" />
+                            <TextBox Text="{Binding Connection.OutstationAddress, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </Grid>
                 </Border>
 
                 <Border Grid.Row="1"
-                        Style="{StaticResource CardBorderStyle}"
-                        Padding="16"
-                        Margin="0,0,0,12">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0"
-                                   Grid.ColumnSpan="2"
-                                   FontSize="16"
-                                   FontWeight="SemiBold"
-                                   Text="Common Session Settings" />
-
-                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,12,10,0">
-                            <TextBlock Text="Master Address" />
-                            <TextBox Text="{Binding Settings.MasterAddress, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-
-                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,12,0,0">
-                            <TextBlock Text="Outstation Address" />
-                            <TextBox Text="{Binding Settings.OutstationAddress, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <Border Grid.Row="2"
                         Style="{StaticResource TcpSectionBorderStyle}"
                         Padding="16"
                         Margin="0,0,0,12">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0"
-                                   Grid.ColumnSpan="2"
-                                   FontSize="16"
+                    <StackPanel>
+                        <TextBlock FontSize="16"
                                    FontWeight="SemiBold"
                                    Text="TCP Target" />
-
-                        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,12,0,0">
-                            <TextBlock Text="Remote Endpoint" />
-                            <TextBox Text="{Binding Settings.Endpoint, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                    </Grid>
+                        <TextBlock Margin="0,12,0,0" Text="TCP Endpoint" />
+                        <TextBox Text="{Binding Connection.Endpoint, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
                 </Border>
 
-                <Border Grid.Row="3"
+                <Border Grid.Row="2"
                         Style="{StaticResource SerialSectionBorderStyle}"
                         Padding="16"
                         Margin="0,0,0,12">
@@ -173,7 +130,7 @@
                                 <ComboBox Grid.Column="0"
                                           Margin="0,0,8,0"
                                           ItemsSource="{Binding SerialPortOptions}"
-                                          SelectedItem="{Binding Settings.SerialPort, UpdateSourceTrigger=PropertyChanged}" />
+                                          SelectedItem="{Binding Connection.SerialPort, UpdateSourceTrigger=PropertyChanged}" />
                                 <Button Grid.Column="1"
                                         Width="70"
                                         Command="{Binding RefreshSerialPortsCommand}"
@@ -187,77 +144,38 @@
 
                         <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,12,0,10">
                             <TextBlock Text="Baud Rate" />
-                            <TextBox Text="{Binding Settings.SerialBaudRate, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox Text="{Binding Connection.SerialBaudRate, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,10,10">
                             <TextBlock Text="Data Bits" />
                             <ComboBox ItemsSource="{Binding SerialDataBitOptions}"
-                                      SelectedItem="{Binding Settings.SerialDataBits}" />
+                                      SelectedItem="{Binding Connection.SerialDataBits}" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,10">
                             <TextBlock Text="Stop Bits" />
                             <ComboBox ItemsSource="{Binding SerialStopBitOptions}"
-                                      SelectedItem="{Binding Settings.SerialStopBits}" />
+                                      SelectedItem="{Binding Connection.SerialStopBits}" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,10,0">
                             <TextBlock Text="Parity" />
                             <ComboBox ItemsSource="{Binding SerialParityOptions}"
-                                      SelectedItem="{Binding Settings.SerialParity}" />
+                                      SelectedItem="{Binding Connection.SerialParity}" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="3" Grid.Column="1">
                             <TextBlock Text="Flow Control" />
                             <ComboBox ItemsSource="{Binding SerialFlowControlOptions}"
-                                      SelectedItem="{Binding Settings.SerialFlowControl}" />
+                                      SelectedItem="{Binding Connection.SerialFlowControl}" />
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="4"
+                <Border Grid.Row="3"
                         Style="{StaticResource CardBorderStyle}"
-                        Padding="16"
-                        Margin="0,0,0,12">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0"
-                                   Grid.ColumnSpan="3"
-                                   FontSize="16"
-                                   FontWeight="SemiBold"
-                                   Text="Timing" />
-
-                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,12,10,0">
-                            <TextBlock Text="Request Timeout (s)" />
-                            <TextBox Text="{Binding Settings.RequestTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-
-                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,12,10,0">
-                            <TextBlock Text="Fast Event Poll (s)" />
-                            <TextBox Text="{Binding Settings.EventPollSeconds, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-
-                        <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,12,0,0">
-                            <TextBlock Text="Static Refresh (s)" />
-                            <TextBox Text="{Binding Settings.StaticRefreshSeconds, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <Border Grid.Row="5"
-                        Style="{StaticResource SerialSectionBorderStyle}"
-                        Padding="16"
-                        Margin="0,0,0,12">
+                        Padding="16">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -272,36 +190,29 @@
                                    Grid.ColumnSpan="2"
                                    FontSize="16"
                                    FontWeight="SemiBold"
-                                   Text="Serial Recovery" />
+                                   Text="Recovery and Unsolicited" />
 
                         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,12,10,0">
                             <TextBlock Text="Port Open Retry (s)" />
-                            <TextBox Text="{Binding Settings.SerialOpenRetrySeconds, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox Text="{Binding Connection.PortRetrySeconds, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
-                        <TextBlock Grid.Row="1"
-                                   Grid.Column="1"
-                                   Margin="0,30,0,0"
-                                   Foreground="{StaticResource TextMutedBrush}"
-                                   Text="{Binding SerialProfile}"
-                                   TextWrapping="Wrap" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,12,0,0">
+                            <CheckBox Margin="0,0,0,8"
+                                      IsChecked="{Binding Connection.EnableUnsolicited}"
+                                      Content="Enable Unsolicited" />
+                            <WrapPanel>
+                                <CheckBox Margin="0,0,16,0"
+                                          IsChecked="{Binding Connection.UnsolicitedClass1}"
+                                          Content="Class 1" />
+                                <CheckBox Margin="0,0,16,0"
+                                          IsChecked="{Binding Connection.UnsolicitedClass2}"
+                                          Content="Class 2" />
+                                <CheckBox IsChecked="{Binding Connection.UnsolicitedClass3}"
+                                          Content="Class 3" />
+                            </WrapPanel>
+                        </StackPanel>
                     </Grid>
-                </Border>
-
-                <Border Grid.Row="6"
-                        Style="{StaticResource CardBorderStyle}"
-                        Padding="16">
-                    <StackPanel>
-                        <TextBlock FontSize="16"
-                                   FontWeight="SemiBold"
-                                   Text="Polling Features" />
-                        <WrapPanel Margin="0,12,0,0">
-                            <CheckBox Margin="0,0,16,8" IsChecked="{Binding Settings.EnableStartupIntegrity}" Content="Startup Integrity" />
-                            <CheckBox Margin="0,0,16,8" IsChecked="{Binding Settings.EnableSlowStaticRefresh}" Content="Slow Static Refresh" />
-                            <CheckBox Margin="0,0,16,8" IsChecked="{Binding Settings.EnableAutoEventScan}" Content="Auto Event Scan on IIN" />
-                            <CheckBox Margin="0,0,0,8" IsChecked="{Binding Settings.EnableUnsolicited}" Content="Enable Unsolicited" />
-                        </WrapPanel>
-                    </StackPanel>
                 </Border>
             </Grid>
         </ScrollViewer>
