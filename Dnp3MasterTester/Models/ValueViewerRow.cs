@@ -4,6 +4,9 @@ public sealed class ValueViewerRow
 {
     public string PointType { get; set; } = string.Empty;
     public ushort Index { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string ScadaTag { get; set; } = string.Empty;
+    public string RawValue { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
     public string Flags { get; set; } = string.Empty;
     public string Quality { get; set; } = string.Empty;
@@ -13,6 +16,7 @@ public sealed class ValueViewerRow
     public string Source { get; set; } = string.Empty;
     public SourceReason SourceReason { get; set; } = SourceReason.Unknown;
     public string SourceReasonText => SourceReason.ToString();
+    public string PointLabel => string.IsNullOrWhiteSpace(ScadaTag) ? $"{PointType} {Index}" : $"{ScadaTag} | {DisplayName}";
     public string SourceTimestampText => SourceTimestampKind switch
     {
         SourceTimestampKind.Valid when SourceTimestampLocal.HasValue => SourceTimestampLocal.Value.ToString("yyyy-MM-dd HH:mm:ss.fff"),

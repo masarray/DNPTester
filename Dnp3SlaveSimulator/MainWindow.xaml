@@ -74,6 +74,13 @@
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
                             VerticalAlignment="Top">
+                    <StackPanel Margin="0,0,12,0"
+                                VerticalAlignment="Center">
+                        <TextBlock Foreground="#5C5C5C"
+                                   Text="Signal Profile" />
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="{Binding SignalProfileName, Mode=OneWay}" />
+                    </StackPanel>
                     <Button Width="120"
                             Height="38"
                             Margin="0,0,8,0"
@@ -126,32 +133,13 @@
                 <TextBlock Grid.Row="0" Grid.Column="5" Margin="0,0,12,6" Text="Port Retry (s)" />
                 <TextBox Grid.Row="1" Grid.Column="5" Margin="0,0,12,0" Text="{Binding Connection.PortRetrySeconds}" IsEnabled="{Binding CanEditSettings}" />
 
-                <StackPanel Grid.Row="0"
-                            Grid.RowSpan="2"
-                            Grid.Column="6"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Bottom"
-                            Orientation="Horizontal">
-                    <Button Width="100"
-                            Height="34"
-                            Margin="0,0,8,0"
-                            Command="{Binding AddPointCommand}"
-                            Content="Add Point" />
-                    <Button Width="110"
-                            Height="34"
-                            Margin="0,0,8,0"
-                            Command="{Binding RemovePointCommand}"
-                            Content="Delete Point" />
-                    <Button Width="120"
-                            Height="34"
-                            Margin="0,0,8,0"
-                            Command="{Binding ToggleSelectedCommand}"
-                            Content="Toggle Binary" />
-                    <Button Width="120"
-                            Height="34"
-                            Command="{Binding NudgeAnalogCommand}"
-                            Content="Nudge Analog" />
-                </StackPanel>
+                <TextBlock Grid.Row="0"
+                           Grid.RowSpan="2"
+                           Grid.Column="6"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Bottom"
+                           Foreground="#5B5B5B"
+                           Text="Manage signal profiles and points from the Point Database panel below." />
             </Grid>
         </Border>
 
@@ -167,11 +155,72 @@
                     BorderBrush="#D9D9D9"
                     BorderThickness="1">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top"
-                               Margin="0,0,0,12"
-                               FontSize="18"
-                               FontWeight="SemiBold"
-                               Text="Point Database" />
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="280" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                            <TextBlock FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Text="Point Database" />
+                            <ComboBox Margin="0,8,0,0"
+                                      ItemsSource="{Binding SignalProfiles}"
+                                      SelectedItem="{Binding SelectedSignalProfile}"
+                                      DisplayMemberPath="Name"
+                                      IsEnabled="{Binding CanEditSettings}" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Column="1"
+                                   Margin="0,28,12,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="#5B5B5B"
+                                   Text="Profile JSON is loaded at startup. Use default for debugging and ElectraNet for FAT validation." />
+
+                        <Button Grid.Column="2"
+                                Width="88"
+                                Height="34"
+                                Margin="0,28,8,0"
+                                Command="{Binding SaveProfileCommand}"
+                                Content="Save" />
+                        <Button Grid.Column="3"
+                                Width="88"
+                                Height="34"
+                                Margin="0,28,8,0"
+                                Command="{Binding ReloadProfileCommand}"
+                                Content="Reload" />
+                        <Button Grid.Column="4"
+                                Width="100"
+                                Height="34"
+                                Margin="0,28,8,0"
+                                Command="{Binding AddPointCommand}"
+                                Content="Add Point" />
+                        <Button Grid.Column="5"
+                                Width="110"
+                                Height="34"
+                                Margin="0,28,8,0"
+                                Command="{Binding RemovePointCommand}"
+                                Content="Delete Point" />
+                        <Button Grid.Column="6"
+                                Width="120"
+                                Height="34"
+                                Margin="0,28,8,0"
+                                Command="{Binding ToggleSelectedCommand}"
+                                Content="Toggle Binary" />
+                        <Button Grid.Column="7"
+                                Width="120"
+                                Height="34"
+                                Margin="0,28,0,0"
+                                Command="{Binding NudgeAnalogCommand}"
+                                Content="Nudge Analog" />
+                    </Grid>
                     <DataGrid ItemsSource="{Binding Signals}"
                               SelectedItem="{Binding SelectedSignal}"
                               AutoGenerateColumns="False"
@@ -183,7 +232,7 @@
                               SelectionUnit="FullRow">
                         <DataGrid.Columns>
                             <DataGridTextColumn Width="70" Header="Index" Binding="{Binding Index}" />
-                            <DataGridTextColumn Width="180" Header="Label" Binding="{Binding Label}" />
+                            <DataGridTextColumn Width="220" Header="Label" Binding="{Binding Label}" />
                             <DataGridComboBoxColumn Width="150" Header="Point Type" ItemsSource="{Binding Source={StaticResource PointTypeValues}}" SelectedItemBinding="{Binding PointType}" />
                             <DataGridComboBoxColumn Width="100" Header="Class" ItemsSource="{Binding Source={StaticResource EventClassValues}}" SelectedItemBinding="{Binding EventClass}" />
                             <DataGridCheckBoxColumn Width="75" Header="Enabled" Binding="{Binding IsEnabled}" />
@@ -203,7 +252,7 @@
                             <DataGridTextColumn Width="110" Header="Fb Delay ms" Binding="{Binding BinaryCommand.FeedbackDelayMs}" />
                             <DataGridTextColumn Width="130" Header="Command Status" Binding="{Binding LastCommandStatus}" IsReadOnly="True" />
                             <DataGridTextColumn Width="240" Header="Command Detail" Binding="{Binding LastCommandDetail}" IsReadOnly="True" />
-                            <DataGridTextColumn Width="220" Header="Notes" Binding="{Binding Notes}" />
+                            <DataGridTextColumn Width="260" Header="Notes" Binding="{Binding Notes}" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>

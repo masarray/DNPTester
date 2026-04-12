@@ -1,0 +1,125 @@
+{
+  "name": "DEFAULT DEBUG PROFILE",
+  "signals": [
+    {
+      "index": 0,
+      "label": "52A Breaker Closed",
+      "pointType": "BinaryInput",
+      "eventClass": "Class1",
+      "isEnabled": true,
+      "boolValue": false,
+      "analogValue": 0,
+      "analogMin": 0,
+      "analogMax": 100,
+      "analogStep": 1,
+      "animationIntervalMs": 1000,
+      "toggleIntervalSeconds": 15,
+      "analogAnimation": "None",
+      "discreteAnimation": "Toggle",
+      "useTimestamp": true,
+      "notes": "Binary indication for breaker closed status",
+      "binaryCommand": {
+        "isEnabled": false,
+        "feedbackIndex": 0,
+        "behavior": "SuccessMatch",
+        "feedbackDelayMs": 800
+      }
+    },
+    {
+      "index": 1,
+      "label": "Trip Alarm",
+      "pointType": "BinaryInput",
+      "eventClass": "Class1",
+      "isEnabled": true,
+      "boolValue": false,
+      "analogValue": 0,
+      "analogMin": 0,
+      "analogMax": 100,
+      "analogStep": 1,
+      "animationIntervalMs": 1000,
+      "toggleIntervalSeconds": 5,
+      "analogAnimation": "None",
+      "discreteAnimation": "None",
+      "useTimestamp": true,
+      "notes": "Binary alarm indication",
+      "binaryCommand": {
+        "isEnabled": false,
+        "feedbackIndex": 0,
+        "behavior": "SuccessMatch",
+        "feedbackDelayMs": 800
+      }
+    },
+    {
+      "index": 0,
+      "label": "Phase Current A",
+      "pointType": "AnalogInput",
+      "eventClass": "Class2",
+      "isEnabled": true,
+      "boolValue": false,
+      "analogValue": 125,
+      "analogMin": 110,
+      "analogMax": 145,
+      "analogStep": 0.5,
+      "animationIntervalMs": 1000,
+      "toggleIntervalSeconds": 5,
+      "analogAnimation": "PingPong",
+      "discreteAnimation": "None",
+      "useTimestamp": true,
+      "notes": "Analog measurement animation",
+      "binaryCommand": {
+        "isEnabled": false,
+        "feedbackIndex": 0,
+        "behavior": "SuccessMatch",
+        "feedbackDelayMs": 800
+      }
+    },
+    {
+      "index": 0,
+      "label": "Close Command Feedback",
+      "pointType": "BinaryOutputStatus",
+      "eventClass": "Class1",
+      "isEnabled": true,
+      "boolValue": false,
+      "analogValue": 0,
+      "analogMin": 0,
+      "analogMax": 100,
+      "analogStep": 1,
+      "animationIntervalMs": 1000,
+      "toggleIntervalSeconds": 5,
+      "analogAnimation": "None",
+      "discreteAnimation": "None",
+      "useTimestamp": true,
+      "notes": "Updated by CROB lifecycle",
+      "binaryCommand": {
+        "isEnabled": true,
+        "feedbackIndex": 0,
+        "behavior": "SuccessDelayedMatch",
+        "feedbackDelayMs": 800
+      }
+    },
+    {
+      "index": 0,
+      "label": "Tap Changer Target",
+      "pointType": "AnalogOutputStatus",
+      "eventClass": "Class2",
+      "isEnabled": true,
+      "boolValue": false,
+      "analogValue": 0,
+      "analogMin": -16,
+      "analogMax": 16,
+      "analogStep": 1,
+      "animationIntervalMs": 1000,
+      "toggleIntervalSeconds": 5,
+      "analogAnimation": "None",
+      "discreteAnimation": "None",
+      "useTimestamp": true,
+      "notes": "Updated by analog output command",
+      "binaryCommand": {
+        "isEnabled": false,
+        "feedbackIndex": 0,
+        "behavior": "SuccessMatch",
+        "feedbackDelayMs": 800
+      }
+    }
+  ]
+}

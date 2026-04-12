@@ -1,10 +1,12 @@
 namespace Dnp3MasterTester.Models;
 
-public sealed class CommandTransaction
+public sealed record CommandTransaction
 {
     public string TransactionId { get; init; } = string.Empty;
     public string PointType { get; init; } = "Binary Output";
     public ushort PointIndex { get; init; }
+    public string DisplayName { get; init; } = string.Empty;
+    public string ScadaTag { get; init; } = string.Empty;
     public string CommandMode { get; init; } = string.Empty;
     public string Operation { get; init; } = string.Empty;
     public DateTime PreparedAtLocal { get; init; }
@@ -22,6 +24,7 @@ public sealed class CommandTransaction
     public IReadOnlyList<CommandLifecycleEntry> Lifecycle { get; init; } = Array.Empty<CommandLifecycleEntry>();
 
     public string PreparedAtText => PreparedAtLocal.ToString("yyyy-MM-dd HH:mm:ss.fff");
+    public string PointLabel => string.IsNullOrWhiteSpace(ScadaTag) ? $"{PointType} {PointIndex}" : $"{ScadaTag} | {DisplayName}";
     public string RequestedAtText => RequestedAtLocal?.ToString("yyyy-MM-dd HH:mm:ss.fff") ?? "-";
     public string AcceptanceAtText => AcceptanceAtLocal?.ToString("yyyy-MM-dd HH:mm:ss.fff") ?? "-";
     public string FeedbackAtText => FeedbackAtLocal?.ToString("yyyy-MM-dd HH:mm:ss.fff") ?? "-";

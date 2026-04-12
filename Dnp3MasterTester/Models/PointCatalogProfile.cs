@@ -1,0 +1,11 @@
+using System.Text.Json.Serialization;
+
+namespace Dnp3MasterTester.Models;
+
+public sealed class PointCatalogProfile
+{
+    public string Name { get; set; } = string.Empty;
+    [JsonIgnore]
+    public string FilePath { get; set; } = string.Empty;
+    public List<PointCatalogEntry> Points { get; set; } = [];
+}

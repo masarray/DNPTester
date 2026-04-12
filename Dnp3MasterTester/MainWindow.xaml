@@ -128,7 +128,12 @@
 
             <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,10,0">
                 <StackPanel>
-                    <TextBlock Text="Polling Baseline" Foreground="{StaticResource TextMutedBrush}" />
+                    <TextBlock Text="Analyzer Profile" Foreground="{StaticResource TextMutedBrush}" />
+                    <ComboBox Margin="0,6,0,0"
+                              ItemsSource="{Binding PointCatalogProfiles}"
+                              SelectedItem="{Binding SelectedPointCatalogProfile}"
+                              DisplayMemberPath="Name" />
+                    <TextBlock Margin="0,8,0,0" Text="Polling Baseline" Foreground="{StaticResource TextMutedBrush}" />
                     <TextBlock Margin="0,6,0,0" Text="{Binding PollingProfile}" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
@@ -149,6 +154,10 @@
                         <Run Text="{Binding Settings.MasterAddress}" />
                         <Run Text=" / " />
                         <Run Text="{Binding Settings.OutstationAddress}" />
+                    </TextBlock>
+                    <TextBlock Margin="0,4,0,0">
+                        <Run Text="Point Profile: " />
+                        <Run Text="{Binding PointCatalogProfileName, Mode=OneWay}" />
                     </TextBlock>
                     <TextBlock Margin="0,4,0,0">
                         <Run Text="Timeout / Event Poll: " />
@@ -203,7 +212,7 @@
                               SelectionUnit="FullRow"
                               SelectionMode="Single">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding PointType}" Header="Point Type" Width="180" />
+                            <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="230" />
                             <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="80" />
                             <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="*" />
                             <DataGridTextColumn Binding="{Binding Flags}" Header="Flags" Width="90" />
@@ -213,6 +222,97 @@
                             <DataGridTextColumn Binding="{Binding Source}" Header="Variation" Width="150" />
                         </DataGrid.Columns>
                     </DataGrid>
+                </TabItem>
+
+                <TabItem Header="Point Database">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="280" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                    <TextBlock Text="Database Profile" />
+                                    <ComboBox Margin="0,6,0,0"
+                                              ItemsSource="{Binding PointCatalogProfiles}"
+                                              SelectedItem="{Binding SelectedPointCatalogProfile}"
+                                              DisplayMemberPath="Name" />
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="1"
+                                           Margin="0,24,12,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Use `default.json` for debugging and `ElectraNet.json` for real FAT metadata." />
+
+                                <Button Grid.Column="2"
+                                        Width="96"
+                                        Height="32"
+                                        Margin="0,22,8,0"
+                                        Command="{Binding AddPointCatalogEntryCommand}"
+                                        Content="Add Row" />
+                                <Button Grid.Column="3"
+                                        Width="108"
+                                        Height="32"
+                                        Margin="0,22,8,0"
+                                        Command="{Binding RemovePointCatalogEntryCommand}"
+                                        Content="Delete Row" />
+                                <Button Grid.Column="4"
+                                        Width="96"
+                                        Height="32"
+                                        Margin="0,22,8,0"
+                                        Command="{Binding ReloadPointCatalogProfileCommand}"
+                                        Content="Reload" />
+                                <Button Grid.Column="5"
+                                        Width="96"
+                                        Height="32"
+                                        Margin="0,22,0,0"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Command="{Binding SavePointCatalogProfileCommand}"
+                                        Content="Save" />
+                            </Grid>
+                        </Border>
+
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding PointCatalog}"
+                                  SelectedItem="{Binding SelectedPointCatalogEntry}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  AlternatingRowBackground="#F8F8F8"
+                                  SelectionMode="Single"
+                                  SelectionUnit="FullRow">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="70" />
+                                <DataGridComboBoxColumn Header="Point Type"
+                                                        Width="140"
+                                                        ItemsSource="{Binding DataContext.PointTypeOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        SelectedItemBinding="{Binding PointType}" />
+                                <DataGridTextColumn Binding="{Binding ObjectVariation}" Header="Obj/Var" Width="90" />
+                                <DataGridTextColumn Binding="{Binding DisplayName}" Header="Display Name" Width="240" />
+                                <DataGridTextColumn Binding="{Binding ScadaTag}" Header="SCADA Tag" Width="160" />
+                                <DataGridTextColumn Binding="{Binding EngineeringRef}" Header="Engineering Ref" Width="180" />
+                                <DataGridTextColumn Binding="{Binding DeviceRef}" Header="Device Ref" Width="110" />
+                                <DataGridTextColumn Binding="{Binding StateTextOff}" Header="State Off" Width="100" />
+                                <DataGridTextColumn Binding="{Binding StateTextOn}" Header="State On" Width="100" />
+                                <DataGridTextColumn Binding="{Binding IedModel}" Header="IED Model" Width="110" />
+                                <DataGridTextColumn Binding="{Binding DrawingRef}" Header="Drawing Ref" Width="90" />
+                                <DataGridTextColumn Binding="{Binding DnpClass}" Header="Class" Width="70" />
+                                <DataGridTextColumn Binding="{Binding DataConcentratorUnit}" Header="DC Unit" Width="80" />
+                                <DataGridTextColumn Binding="{Binding IoRef}" Header="IO Ref" Width="120" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
                 </TabItem>
 
                 <TabItem Header="Command Testing">
@@ -391,7 +491,7 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}" Header="Logged At" Width="190" />
                             <DataGridTextColumn Binding="{Binding EventType}" Header="Event Type" Width="170" />
-                            <DataGridTextColumn Binding="{Binding PointType}" Header="Point Type" Width="180" />
+                            <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="230" />
                             <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="70" />
                             <DataGridTextColumn Binding="{Binding PreviousValue}" Header="Previous" Width="100" />
                             <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="100" />
@@ -416,7 +516,7 @@
                             <DataGridTextColumn Binding="{Binding SourceTimestampText}" Header="Source Timestamp" Width="190" />
                             <DataGridTextColumn Binding="{Binding ReadType}" Header="Read Type" Width="120" />
                             <DataGridTextColumn Binding="{Binding EventClass}" Header="Class" Width="100" />
-                            <DataGridTextColumn Binding="{Binding PointType}" Header="Point Type" Width="170" />
+                            <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="230" />
                             <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="70" />
                             <DataGridTextColumn Binding="{Binding PreviousValue}" Header="Previous" Width="110" />
                             <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="120" />

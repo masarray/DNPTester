@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Threading;
 using Dnp3SlaveSimulator.Models;
@@ -11,7 +14,14 @@ public sealed class MainViewModel : ViewModelBase
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _animationTimer;
     private readonly Dnp3OutstationService _outstationService;
+    private readonly JsonSerializerOptions _profileSerializerOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
     private Dnp3SimulatorSignal? _selectedSignal;
+    private SignalDatabaseProfile? _selectedSignalProfile;
     private string _statusText = "Ready";
     private string _runtimeState = "Stopped";
     private bool _isRunning;
@@ -35,6 +45,7 @@ public sealed class MainViewModel : ViewModelBase
 
         Connection = new Dnp3SlaveConnectionSettings();
         Signals = new ObservableCollection<Dnp3SimulatorSignal>();
+        SignalProfiles = LoadSignalProfiles();
         RuntimeLog = new ObservableCollection<RuntimeLogEntry>();
 
         TransportOptions = Enum.GetValues(typeof(Dnp3SlaveTransportType)).Cast<Dnp3SlaveTransportType>().ToArray();
@@ -48,16 +59,22 @@ public sealed class MainViewModel : ViewModelBase
         StopRuntimeCommand = new RelayCommand(_ => StopRuntime(), _ => IsRunning);
         AddPointCommand = new RelayCommand(_ => AddPoint(), _ => !IsRunning);
         RemovePointCommand = new RelayCommand(_ => RemovePoint(), _ => !IsRunning && SelectedSignal is not null);
+        SaveProfileCommand = new RelayCommand(_ => SaveProfile(), _ => !IsRunning && SelectedSignalProfile is not null);
+        ReloadProfileCommand = new RelayCommand(_ => ReloadProfile(), _ => !IsRunning && SelectedSignalProfile is not null);
         ToggleSelectedCommand = new RelayCommand(_ => ToggleSelected(), _ => SelectedSignal?.IsBinaryLike == true);
         NudgeAnalogCommand = new RelayCommand(_ => NudgeAnalog(), _ => SelectedSignal?.IsAnalogLike == true);
         ClearLogCommand = new RelayCommand(_ => RuntimeLog.Clear());
 
-        SeedDefaultSignals();
-        StatusText = "Seeded default DNP3 points. Start runtime to expose TCP/serial outstation.";
+        SelectedSignalProfile = SignalProfiles.FirstOrDefault();
+        if (SelectedSignalProfile is null)
+        {
+            StatusText = "No signal profile found. Add JSON profiles under MetadataProfiles.";
+        }
     }
 
     public Dnp3SlaveConnectionSettings Connection { get; }
     public ObservableCollection<Dnp3SimulatorSignal> Signals { get; }
+    public ObservableCollection<SignalDatabaseProfile> SignalProfiles { get; }
     public ObservableCollection<RuntimeLogEntry> RuntimeLog { get; }
 
     public Dnp3SlaveTransportType[] TransportOptions { get; }
@@ -71,6 +88,8 @@ public sealed class MainViewModel : ViewModelBase
     public RelayCommand StopRuntimeCommand { get; }
     public RelayCommand AddPointCommand { get; }
     public RelayCommand RemovePointCommand { get; }
+    public RelayCommand SaveProfileCommand { get; }
+    public RelayCommand ReloadProfileCommand { get; }
     public RelayCommand ToggleSelectedCommand { get; }
     public RelayCommand NudgeAnalogCommand { get; }
     public RelayCommand ClearLogCommand { get; }
@@ -103,10 +122,27 @@ public sealed class MainViewModel : ViewModelBase
 
     public bool CanEditSettings => !IsRunning;
 
+    public string SignalProfileName => SelectedSignalProfile?.Name ?? "No Signal Profile";
+
     public string ConnectionSummary =>
         Connection.Transport == Dnp3SlaveTransportType.TcpServer
-            ? $"TCP server on {Connection.Endpoint} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress}"
-            : $"Serial {Connection.SerialPort} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress}";
+            ? $"TCP server on {Connection.Endpoint} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress} | Profile {SignalProfileName}"
+            : $"Serial {Connection.SerialPort} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress} | Profile {SignalProfileName}";
+
+    public SignalDatabaseProfile? SelectedSignalProfile
+    {
+        get => _selectedSignalProfile;
+        set
+        {
+            if (SetProperty(ref _selectedSignalProfile, value))
+            {
+                ApplySignalProfile(value);
+                RaisePropertyChanged(nameof(SignalProfileName));
+                RaisePropertyChanged(nameof(ConnectionSummary));
+                RefreshCommands();
+            }
+        }
+    }
 
     public Dnp3SimulatorSignal? SelectedSignal
     {
@@ -120,72 +156,91 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    private void SeedDefaultSignals()
+    private ObservableCollection<SignalDatabaseProfile> LoadSignalProfiles()
+    {
+        var result = new ObservableCollection<SignalDatabaseProfile>();
+        var profileDirectory = Path.Combine(AppContext.BaseDirectory, "MetadataProfiles");
+        if (!Directory.Exists(profileDirectory))
+        {
+            return result;
+        }
+
+        foreach (var file in Directory.GetFiles(profileDirectory, "*.json").OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+        {
+            var json = File.ReadAllText(file);
+            var profile = JsonSerializer.Deserialize<SignalDatabaseProfile>(json, _profileSerializerOptions);
+            if (profile is null)
+            {
+                continue;
+            }
+
+            profile.FilePath = file;
+            result.Add(profile);
+        }
+
+        return result;
+    }
+
+    private void ApplySignalProfile(SignalDatabaseProfile? profile)
     {
         Signals.Clear();
-        Signals.Add(new Dnp3SimulatorSignal
+        if (profile is not null)
         {
-            Index = 0,
-            Label = "52A Breaker Closed",
-            PointType = Dnp3OutstationPointType.BinaryInput,
-            EventClass = Dnp3EventClassModel.Class1,
-            BoolValue = false,
-            DiscreteAnimation = DiscreteAnimationKind.Toggle,
-            ToggleIntervalSeconds = 15,
-            Notes = "Binary indication for breaker closed status"
-        });
-        Signals.Add(new Dnp3SimulatorSignal
-        {
-            Index = 1,
-            Label = "Trip Alarm",
-            PointType = Dnp3OutstationPointType.BinaryInput,
-            EventClass = Dnp3EventClassModel.Class1,
-            BoolValue = false,
-            Notes = "Binary alarm indication"
-        });
-        Signals.Add(new Dnp3SimulatorSignal
-        {
-            Index = 0,
-            Label = "Phase Current A",
-            PointType = Dnp3OutstationPointType.AnalogInput,
-            EventClass = Dnp3EventClassModel.Class2,
-            AnalogValue = 125,
-            AnalogMin = 110,
-            AnalogMax = 145,
-            AnalogStep = 0.5,
-            AnalogAnimation = AnalogAnimationKind.PingPong,
-            AnimationIntervalMs = 1000,
-            Notes = "Analog measurement animation"
-        });
-        Signals.Add(new Dnp3SimulatorSignal
-        {
-            Index = 0,
-            Label = "Close Command Feedback",
-            PointType = Dnp3OutstationPointType.BinaryOutputStatus,
-            EventClass = Dnp3EventClassModel.Class1,
-            BoolValue = false,
-            Notes = "Updated by CROB lifecycle",
-            BinaryCommand = new BinaryCommandScenario
+            foreach (var signal in profile.Signals)
             {
-                IsEnabled = true,
-                FeedbackIndex = 0,
-                Behavior = BinaryCommandBehavior.SuccessDelayedMatch,
-                FeedbackDelayMs = 800
+                Signals.Add(signal);
             }
-        });
-        Signals.Add(new Dnp3SimulatorSignal
-        {
-            Index = 0,
-            Label = "Tap Changer Target",
-            PointType = Dnp3OutstationPointType.AnalogOutputStatus,
-            EventClass = Dnp3EventClassModel.Class2,
-            AnalogValue = 0,
-            AnalogMin = -16,
-            AnalogMax = 16,
-            AnalogStep = 1,
-            Notes = "Updated by analog output command"
-        });
+        }
+
         SelectedSignal = Signals.FirstOrDefault();
+        StatusText = profile is null
+            ? "No signal profile selected."
+            : $"Loaded signal profile: {profile.Name}";
+    }
+
+    private void SaveProfile()
+    {
+        if (SelectedSignalProfile is null || string.IsNullOrWhiteSpace(SelectedSignalProfile.FilePath))
+        {
+            return;
+        }
+
+        SelectedSignalProfile.Signals = Signals.ToList();
+        var json = JsonSerializer.Serialize(SelectedSignalProfile, _profileSerializerOptions);
+        File.WriteAllText(SelectedSignalProfile.FilePath, json);
+        StatusText = $"Saved signal profile: {SelectedSignalProfile.Name}";
+        AppendLog(new RuntimeLogEntry
+        {
+            TimestampLocal = DateTime.Now,
+            Category = "Profile",
+            Message = $"Saved {SelectedSignalProfile.Name}"
+        });
+    }
+
+    private void ReloadProfile()
+    {
+        if (SelectedSignalProfile is null || string.IsNullOrWhiteSpace(SelectedSignalProfile.FilePath) || !File.Exists(SelectedSignalProfile.FilePath))
+        {
+            return;
+        }
+
+        var json = File.ReadAllText(SelectedSignalProfile.FilePath);
+        var reloaded = JsonSerializer.Deserialize<SignalDatabaseProfile>(json, _profileSerializerOptions);
+        if (reloaded is null)
+        {
+            return;
+        }
+
+        reloaded.FilePath = SelectedSignalProfile.FilePath;
+        var profileIndex = SignalProfiles.IndexOf(SelectedSignalProfile);
+        SignalProfiles[profileIndex] = reloaded;
+        SelectedSignalProfile = reloaded;
+        AppendLog(new RuntimeLogEntry
+        {
+            TimestampLocal = DateTime.Now,
+            Category = "Profile",
+            Message = $"Reloaded {SelectedSignalProfile.Name}"
+        });
     }
 
     private void StartRuntime()
@@ -371,6 +426,8 @@ public sealed class MainViewModel : ViewModelBase
         StopRuntimeCommand.RaiseCanExecuteChanged();
         AddPointCommand.RaiseCanExecuteChanged();
         RemovePointCommand.RaiseCanExecuteChanged();
+        SaveProfileCommand.RaiseCanExecuteChanged();
+        ReloadProfileCommand.RaiseCanExecuteChanged();
         ToggleSelectedCommand.RaiseCanExecuteChanged();
         NudgeAnalogCommand.RaiseCanExecuteChanged();
     }

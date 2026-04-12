@@ -9,6 +9,10 @@ public sealed class SoeEventRow
     public string EventClass { get; set; } = string.Empty;
     public string PointType { get; set; } = string.Empty;
     public ushort Index { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string ScadaTag { get; set; } = string.Empty;
+    public string RawValue { get; set; } = string.Empty;
+    public string RawPreviousValue { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
     public string PreviousValue { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
@@ -20,6 +24,7 @@ public sealed class SoeEventRow
     public SourceReason SourceReason { get; set; } = SourceReason.Unknown;
     public string Notes { get; set; } = string.Empty;
     public string SourceReasonText => SourceReason.ToString();
+    public string PointLabel => string.IsNullOrWhiteSpace(ScadaTag) ? $"{PointType} {Index}" : $"{ScadaTag} | {DisplayName}";
     public string SourceTimestampText => SourceTimestampKind switch
     {
         SourceTimestampKind.Valid when SourceTimestampLocal.HasValue => SourceTimestampLocal.Value.ToString("yyyy-MM-dd HH:mm:ss.fff"),

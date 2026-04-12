@@ -15,4 +15,10 @@
     <PackageReference Include="dnp3" Version="1.7.0-RC1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="MetadataProfiles\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
