@@ -81,7 +81,7 @@ public sealed class Dnp3OutstationService : IDisposable
 
             foreach (var signal in signalList)
             {
-                PublishSignalValue(signal);
+                PublishSignalValue(signal, ShouldCreateStartupEvent(signal));
             }
 
             _outstation.Enable();
@@ -148,7 +148,7 @@ public sealed class Dnp3OutstationService : IDisposable
         PublishState("Stopped");
     }
 
-    public void PublishSignalValue(Dnp3SimulatorSignal signal)
+    public void PublishSignalValue(Dnp3SimulatorSignal signal, bool forceEvent = false)
     {
         lock (_sync)
         {
@@ -164,7 +164,7 @@ public sealed class Dnp3OutstationService : IDisposable
             }
 
             CopySignalState(signal, runtimeSignal);
-            _outstation.Transaction(db => UpdatePoint(db, runtimeSignal));
+            _outstation.Transaction(db => UpdatePoint(db, runtimeSignal, forceEvent));
         }
     }
 
@@ -230,9 +230,21 @@ public sealed class Dnp3OutstationService : IDisposable
         return Timestamp.InvalidTimestamp();
     }
 
-    private static UpdateOptions GetUpdateOptions()
+    private static UpdateOptions GetUpdateOptions(bool forceEvent = false)
     {
-        return UpdateOptions.DetectEvent();
+        return forceEvent
+            ? UpdateOptions.DetectEvent().WithEventMode(EventMode.Force)
+            : UpdateOptions.DetectEvent();
+    }
+
+    private static bool ShouldCreateStartupEvent(Dnp3SimulatorSignal signal)
+    {
+        return signal.IsEnabled &&
+               signal.UseTimestamp &&
+               signal.PointType is Dnp3OutstationPointType.BinaryInput
+                   or Dnp3OutstationPointType.AnalogInput
+                   or Dnp3OutstationPointType.BinaryOutputStatus
+                   or Dnp3OutstationPointType.AnalogOutputStatus;
     }
 
     private static void AddPoint(Database db, Dnp3SimulatorSignal signal)
@@ -277,11 +289,11 @@ public sealed class Dnp3OutstationService : IDisposable
         }
     }
 
-    private static void UpdatePoint(Database db, Dnp3SimulatorSignal signal)
+    private static void UpdatePoint(Database db, Dnp3SimulatorSignal signal, bool forceEvent = false)
     {
         var flags = new Flags(signal.IsEnabled ? Flag.Online : Flag.CommLost);
         var timestamp = GetTimestamp(signal);
-        var options = GetUpdateOptions();
+        var options = GetUpdateOptions(forceEvent);
 
         switch (signal.PointType)
         {

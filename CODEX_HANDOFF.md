@@ -1,6 +1,6 @@
 # CODEX HANDOFF
 
-Last updated: `2026-04-12 10:08:10 +07:00`
+Last updated: `2026-04-12 16:56:03 +07:00`
 Workspace: `D:\Git\DNPTester`
 
 ## Current intent
@@ -17,23 +17,25 @@ The user wants the DNP3 tools to become FAT-capable with:
 
 ## Executive summary
 
-The current position is materially ahead of the old `task_handoff.md`.
+The project is now in a better place than the previous handoff:
 
-What is already in place:
+- master and slave both use JSON database profiles
+- `default.json` remains the debug/simulation profile
+- `ElectraNet.json` is now the first real FAT profile on both sides
+- point database editing exists in both apps
+- command-feedback pairing is now functionally working for the ElectraNet group-active use case
+- slave command actuation is no longer generic only:
+  - BOS 0 -> BI 21
+  - BOS 1 -> BI 22
+  - BOS 2 -> BI 23
+  - BOS 3 -> BI 24
+- master command correlation is already consuming explicit feedback metadata
 
-- master command tracker exists and has already been hardened against:
-  - duplicate feedback mutation after terminal state
-  - duplicate completion rows
-  - late idle/status rematch on a completed transaction
-- master now has point-catalog/profile infrastructure
-- master has `MetadataProfiles\default.json` and `MetadataProfiles\ElectraNet.json`
-- master now has a real `Point Database` tab, not just a profile label
-- slave now also has profile JSON infrastructure:
-  - `MetadataProfiles\default.json`
-  - `MetadataProfiles\ElectraNet.json`
-  - load-on-startup
-  - profile selection in `Point Database`
-  - save/reload flow
+Most recent progress in this session:
+
+- slave startup timestamp seeding has now been upgraded from “model-only timestamp” to real outstation startup-event publication
+- `Dnp3OutstationService` now uses `UpdateOptions.DetectEvent().WithEventMode(EventMode.Force)` for selected startup-seeded points
+- local compile verification for `Dnp3SlaveSimulator` succeeded
 
 ## What the latest user screenshot proves
 
@@ -56,41 +58,9 @@ Observed from screenshot:
 This means:
 
 - profile selection is working
-- metadata enrichment is partially working
-- DI naming/state-text mapping is active
-- BOS naming is not yet resolved the way the user wants
-
-## Most likely reason BOS labels are still generic
-
-The current master enrichment key is based on:
-
-- `PointType`
-- `Index`
-
-The runtime `PointType` text coming from the service appears to differ from the string stored in JSON for BOS rows.
-
-Likely mismatch examples:
-
-- runtime emits `Binary Output Status`
-- metadata may be keyed differently or value path may use another point-type label
-
-Action for next Codex:
-
-1. inspect the exact `PointType` string emitted into:
-   - `ValueViewerRow.PointType`
-   - `EventLogEntry.PointType`
-   - `SoeEventRow.PointType`
-2. compare against values stored in:
-   - `Dnp3MasterTester\MetadataProfiles\ElectraNet.json`
-3. normalize point type keys in one place only
-4. avoid spreading string heuristics everywhere
-
-Best fix direction:
-
-- create a canonical point-type normalization helper in master ViewModel/metadata layer
-- map all equivalent labels to one normalized key before metadata lookup
-
-Do not move this into `Dnp3MasterService`.
+- metadata enrichment is working well enough for real FAT iteration
+- ElectraNet semantic state text is visible
+- point database tab is now the real engineering workspace, not just a demo surface
 
 ## Important code changes already made in this session
 
@@ -112,12 +82,22 @@ Files materially changed:
 
 Master functional changes:
 
-- `Point Database` tab added
-- point catalog profile load/save/reload implemented
+- `Point Database` tab added and retained as the main metadata editor
 - profile selection wired into the master UI
-- event/value/SOE/command tracker enrichment uses metadata layer
-- semantic state text now maps from metadata where available
-- command tracker still remains transport-agnostic
+- metadata enrichment is applied to:
+  - Value Viewer
+  - SCADA Events
+  - SOE Audit
+  - Command Life Tracker
+- command feedback metadata is now inline in the main point database grid, not stuck in a cramped sub-grid
+- master still keeps structured feedback metadata internally:
+  - `FeedbackIndex`
+  - `FeedbackPointType`
+  - `FeedbackDisplayName`
+  - `DefaultCommandMode`
+  - `TimeoutMs`
+- `Dnp3MasterService.ExecuteBinaryControlAsync(...)` now accepts expected feedback point type/index and correlation window
+- explicit ElectraNet mapping path is active for command feedback correlation
 - `PointCatalogProfile.FilePath` marked `[JsonIgnore]`
 - constructor order fixed so profile setter does not hit `NullReferenceException`
 
@@ -137,9 +117,17 @@ Slave functional changes:
 - profile JSON system added
 - startup now loads profiles from `MetadataProfiles`
 - selected profile populates `Signals`
-- `Point Database` now behaves like a profile configurator
+- `Point Database` now behaves like a real profile configurator
+- inline feedback metadata added to the main signal grid
+- separate cramped mapping sub-grid removed
 - save/reload added
 - enum JSON loading fixed by adding `JsonStringEnumConverter`
+- command mapping is now functionally active:
+  - slave runtime uses profile metadata to decide which feedback point to drive
+  - BOS group-active commands now move their paired BI feedback points
+- startup timestamp seeding is now materially improved:
+  - `MainViewModel.SeedStartupTimestamps()` stamps the model before runtime start
+  - `Dnp3OutstationService.Start()` now publishes startup-seeded points with forced event creation
 
 ## Errors encountered and already fixed
 
@@ -171,92 +159,94 @@ Slave functional changes:
 - enum strings in JSON (`BinaryInput`, `Class1`, etc.) were not deserializing
 - fixed by adding `JsonStringEnumConverter` to slave profile serializer options
 
+6. Slave startup timestamp gap:
+
+- previously startup seeding only updated the local model timestamp
+- no real DNP3 event was guaranteed for unchanged startup values
+- fixed by forcing startup event creation for timestamp-enabled event-capable points in `Dnp3OutstationService`
+
 ## Known gaps right now
 
-### 1. Master metadata enrichment is not yet fully normalized
+### 1. Startup timestamp still needs runtime FAT validation
 
-Visible symptom:
+Implementation is now in place, but it still needs real validation from the user machine:
 
-- DI rows map properly
-- BOS rows still show generic labels
+- start slave fresh
+- connect master fresh
+- perform startup integrity / event poll
+- verify startup-seeded timestamped events are visible without waiting for manual point change
 
-Priority:
+Important semantic note:
 
-- high
+- GI/static responses may still legitimately show no timestamp depending on variation
+- the expected proof is in event/scan behavior, not necessarily in every static row
 
-Reason:
+### 2. Master and slave metadata model should stay synchronized
 
-- this affects FAT readability directly
+The direction is correct now:
 
-### 2. Master still has both:
+- both have `default.json`
+- both have `ElectraNet.json`
+- both have inline command-feedback metadata
 
-- top-level profile combo in summary card
-- full `Point Database` tab
+But future edits must keep the schema aligned across both apps.
 
-This is not broken, but UX should be reviewed later.
+### 3. Current FAT scope is intentionally narrow and explicit
 
-Possible direction:
+What is already engineered for real validation:
 
-- keep summary card as active-profile indicator only
-- keep edit actions only inside `Point Database`
+- ElectraNet profile
+- 4 group-active command/feedback pairs
 
-Do this later, not before fixing BOS metadata resolution.
+What is not yet generalized:
 
-### 3. Slave profile model is functional but not yet engineering-rich
-
-Current slave `ElectraNet.json` is enough to support:
-
-- profile-driven runtime
-- group-active command lifecycle validation
-
-But it is not yet a full relay engineering database in the same richness as master metadata.
-
-That is acceptable for now.
-
-### 4. Build verification from Codex sandbox was incomplete
-
-`dotnet build` from sandbox hit local SDK path permission issues:
-
-- `C:\Users\me\AppData\Local\Microsoft SDKs`
-
-So this session relied on user local builds/runs for final confirmation.
+- wider command families
+- richer command-mode semantics per point
+- advanced mismatch / uncertain verdict taxonomy
 
 ## Recommended next steps for Codex on home PC
 
 ### Immediate next step
 
-Fix master metadata lookup so BOS rows resolve ElectraNet labels correctly.
+Do runtime validation of the new startup timestamp behavior.
 
-Suggested plan:
+Suggested test:
 
-1. inspect the exact `PointType` values reaching master UI models
-2. add a canonical point-type normalization helper in `MainViewModel`
-3. normalize both:
-   - metadata profile point types
-   - runtime point types from service rows
-4. verify the following rows display proper names:
-   - BOS 0 -> `SET 2 GROUP 1 ACTIVE`
-   - BOS 1 -> `SET 2 GROUP 2 ACTIVE`
-   - BOS 2 -> `SET 2 GROUP 3 ACTIVE`
-   - BOS 3 -> `SET 2 GROUP 4 ACTIVE`
+1. run slave with `ELECTRANET PROFILE`
+2. start slave from cold state
+3. connect master with `ELECTRANET PROFILE`
+4. perform startup integrity / event poll
+5. verify whether startup-seeded BI/BOS rows now produce timestamped evidence immediately
+
+If startup timestamp is still not visible enough, inspect:
+
+- event variation used for the point
+- whether the master UI is only showing static timestamp fields
+- whether the first queued events are being cleared before the user looks at them
+
+### Next step after timestamp validation
+
+Recheck full ElectraNet command lifecycle end-to-end:
+
+1. BO/BOS 0 command -> BI 21 feedback
+2. BO/BOS 1 command -> BI 22 feedback
+3. BO/BOS 2 command -> BI 23 feedback
+4. BO/BOS 3 command -> BI 24 feedback
+
+Confirm:
+
+- slave BOS state changes
+- paired BI feedback changes
+- master life tracker correlates the explicit feedback point
+- verdict remains stable after completion
 
 ### After that
 
-Validate end-to-end command lifecycle with ElectraNet profile:
+Only then move into refinement:
 
-1. master profile = `ELECTRANET PROFILE`
-2. slave profile = `ELECTRANET PROFILE`
-3. issue command on BOS 0..3
-4. confirm:
-   - requested
-   - accepted
-   - feedback matched
-   - final verdict stable
-   - no late rematch mutation
-
-### Next architectural step after BOS naming is clean
-
-Add explicit `CommandDefinition` mapping for ElectraNet group-active pairs only:
+- startup event origin labeling (`StartupSeed` vs real change)
+- richer verdict wording
+- broader ElectraNet engineering metadata
 
 - DO/BOS 0 -> DI 21
 - DO/BOS 1 -> DI 22

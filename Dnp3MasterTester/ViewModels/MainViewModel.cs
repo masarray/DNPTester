@@ -311,21 +311,57 @@ public sealed class MainViewModel : ViewModelBase
 
         existing.Value = row.Value;
         existing.Flags = row.Flags;
-        existing.Quality = row.Quality;
         existing.ReceivedAtLocal = row.ReceivedAtLocal;
-        existing.SourceTimestampLocal = row.SourceTimestampLocal;
-        existing.SourceTimestampKind = row.SourceTimestampKind;
-        existing.Source = row.Source;
-        existing.SourceReason = row.SourceReason;
         existing.DisplayName = row.DisplayName;
         existing.ScadaTag = row.ScadaTag;
         existing.RawValue = row.RawValue;
+
+        // Preserve the last valid event timestamp when a later static/integrity refresh
+        // re-reports the same value without time information.
+        if (ShouldPreserveTimestampEvidence(existing, row))
+        {
+            existing.Quality = existing.Quality;
+            existing.SourceTimestampLocal = existing.SourceTimestampLocal;
+            existing.SourceTimestampKind = existing.SourceTimestampKind;
+            existing.Source = existing.Source;
+            existing.SourceReason = existing.SourceReason;
+        }
+        else
+        {
+            existing.Quality = row.Quality;
+            existing.SourceTimestampLocal = row.SourceTimestampLocal;
+            existing.SourceTimestampKind = row.SourceTimestampKind;
+            existing.Source = row.Source;
+            existing.SourceReason = row.SourceReason;
+        }
 
         var index = ValueViewer.IndexOf(existing);
         if (index > 0)
         {
             ValueViewer.Move(index, 0);
         }
+    }
+
+    private static bool ShouldPreserveTimestampEvidence(ValueViewerRow existing, ValueViewerRow incoming)
+    {
+        if (existing.SourceTimestampKind != SourceTimestampKind.Valid)
+        {
+            return false;
+        }
+
+        if (incoming.SourceTimestampKind == SourceTimestampKind.Valid)
+        {
+            return false;
+        }
+
+        if (!string.Equals(existing.Value, incoming.Value, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return incoming.SourceReason is SourceReason.StartupIntegrity
+            or SourceReason.ManualIntegrity
+            or SourceReason.PeriodicStaticRefresh;
     }
 
     private static void InsertTop<T>(ObservableCollection<T> items, T item)
