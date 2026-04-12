@@ -1,5 +1,11 @@
 {
   "name": "ELECTRANET PROFILE",
+  "communication": {
+    "enableUnsolicited": true,
+    "unsolicitedClass1": true,
+    "unsolicitedClass2": false,
+    "unsolicitedClass3": false
+  },
   "signals": [
     { "index": 0, "label": "SET 2 PHASE L1 FAULT", "pointType": "BinaryInput", "eventClass": "Class1", "isEnabled": true, "boolValue": false, "analogValue": 0, "analogMin": 0, "analogMax": 100, "analogStep": 1, "animationIntervalMs": 1000, "toggleIntervalSeconds": 5, "analogAnimation": "None", "discreteAnimation": "None", "useTimestamp": true, "notes": "ElectraNet DI", "binaryCommand": { "isEnabled": false, "feedbackIndex": 0, "feedbackPointType": "BinaryOutputStatus", "behavior": "SuccessMatch", "feedbackDelayMs": 800 } },
     { "index": 1, "label": "SET 2 PHASE L2 FAULT", "pointType": "BinaryInput", "eventClass": "Class1", "isEnabled": true, "boolValue": false, "analogValue": 0, "analogMin": 0, "analogMax": 100, "analogStep": 1, "animationIntervalMs": 1000, "toggleIntervalSeconds": 5, "analogAnimation": "None", "discreteAnimation": "None", "useTimestamp": true, "notes": "ElectraNet DI", "binaryCommand": { "isEnabled": false, "feedbackIndex": 0, "feedbackPointType": "BinaryOutputStatus", "behavior": "SuccessMatch", "feedbackDelayMs": 800 } },

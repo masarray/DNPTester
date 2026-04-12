@@ -1,5 +1,11 @@
 {
   "name": "DEFAULT DEBUG PROFILE",
+  "communication": {
+    "enableUnsolicited": false,
+    "unsolicitedClass1": true,
+    "unsolicitedClass2": false,
+    "unsolicitedClass3": false
+  },
   "signals": [
     {
       "index": 0,

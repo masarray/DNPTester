@@ -44,6 +44,7 @@ public sealed class MainViewModel : ViewModelBase
         _animationTimer.Tick += AnimationTimer_Tick;
 
         Connection = new Dnp3SlaveConnectionSettings();
+        Connection.PropertyChanged += (_, _) => RaisePropertyChanged(nameof(ConnectionSummary));
         Signals = new ObservableCollection<Dnp3SimulatorSignal>();
         SignalProfiles = LoadSignalProfiles();
         RuntimeLog = new ObservableCollection<RuntimeLogEntry>();
@@ -126,8 +127,8 @@ public sealed class MainViewModel : ViewModelBase
 
     public string ConnectionSummary =>
         Connection.Transport == Dnp3SlaveTransportType.TcpServer
-            ? $"TCP server on {Connection.Endpoint} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress} | Profile {SignalProfileName}"
-            : $"Serial {Connection.SerialPort} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress} | Profile {SignalProfileName}";
+            ? $"TCP server on {Connection.Endpoint} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress} | Profile {SignalProfileName} | Unsol {(Connection.EnableUnsolicited ? DescribeUnsolicitedClasses() : "Off")}"
+            : $"Serial {Connection.SerialPort} | Master {Connection.MasterAddress} -> Outstation {Connection.OutstationAddress} | Profile {SignalProfileName} | Unsol {(Connection.EnableUnsolicited ? DescribeUnsolicitedClasses() : "Off")}";
 
     public SignalDatabaseProfile? SelectedSignalProfile
     {
@@ -186,6 +187,8 @@ public sealed class MainViewModel : ViewModelBase
         Signals.Clear();
         if (profile is not null)
         {
+            ApplyCommunicationProfile(profile.Communication);
+
             foreach (var signal in profile.Signals)
             {
                 var mapping = profile.CommandMappings.FirstOrDefault(x =>
@@ -221,6 +224,7 @@ public sealed class MainViewModel : ViewModelBase
         }
 
         ApplyCommandMappingsToSignals();
+        SelectedSignalProfile.Communication = BuildCommunicationProfile();
         SelectedSignalProfile.Signals = Signals.ToList();
         SelectedSignalProfile.CommandMappings = Signals
             .Where(x => x.FeedbackMappingEnabled && x.FeedbackIndex.HasValue)
@@ -507,5 +511,47 @@ public sealed class MainViewModel : ViewModelBase
                    or Dnp3OutstationPointType.AnalogInput
                    or Dnp3OutstationPointType.BinaryOutputStatus
                    or Dnp3OutstationPointType.AnalogOutputStatus;
+    }
+
+    private void ApplyCommunicationProfile(SlaveCommunicationProfile? communication)
+    {
+        communication ??= new SlaveCommunicationProfile();
+        Connection.EnableUnsolicited = communication.EnableUnsolicited;
+        Connection.UnsolicitedClass1 = communication.UnsolicitedClass1;
+        Connection.UnsolicitedClass2 = communication.UnsolicitedClass2;
+        Connection.UnsolicitedClass3 = communication.UnsolicitedClass3;
+        RaisePropertyChanged(nameof(ConnectionSummary));
+    }
+
+    private SlaveCommunicationProfile BuildCommunicationProfile()
+    {
+        return new SlaveCommunicationProfile
+        {
+            EnableUnsolicited = Connection.EnableUnsolicited,
+            UnsolicitedClass1 = Connection.UnsolicitedClass1,
+            UnsolicitedClass2 = Connection.UnsolicitedClass2,
+            UnsolicitedClass3 = Connection.UnsolicitedClass3
+        };
+    }
+
+    private string DescribeUnsolicitedClasses()
+    {
+        var classes = new List<string>();
+        if (Connection.UnsolicitedClass1)
+        {
+            classes.Add("C1");
+        }
+
+        if (Connection.UnsolicitedClass2)
+        {
+            classes.Add("C2");
+        }
+
+        if (Connection.UnsolicitedClass3)
+        {
+            classes.Add("C3");
+        }
+
+        return classes.Count == 0 ? "On (none)" : $"On ({string.Join("/", classes)})";
     }
 }

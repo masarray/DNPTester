@@ -102,12 +102,13 @@
                 BorderThickness="1">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="150" />
                     <ColumnDefinition Width="220" />
-                    <ColumnDefinition Width="140" />
-                    <ColumnDefinition Width="140" />
-                    <ColumnDefinition Width="140" />
-                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="110" />
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="150" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
@@ -133,9 +134,32 @@
                 <TextBlock Grid.Row="0" Grid.Column="5" Margin="0,0,12,6" Text="Port Retry (s)" />
                 <TextBox Grid.Row="1" Grid.Column="5" Margin="0,0,12,0" Text="{Binding Connection.PortRetrySeconds}" IsEnabled="{Binding CanEditSettings}" />
 
+                <StackPanel Grid.Row="0"
+                            Grid.RowSpan="2"
+                            Grid.Column="6"
+                            Margin="0,2,12,0">
+                    <CheckBox Margin="0,0,0,6"
+                              IsChecked="{Binding Connection.EnableUnsolicited}"
+                              IsEnabled="{Binding CanEditSettings}"
+                              Content="Enable Unsolicited" />
+                    <StackPanel Orientation="Horizontal">
+                        <CheckBox Margin="0,0,10,0"
+                                  IsChecked="{Binding Connection.UnsolicitedClass1}"
+                                  IsEnabled="{Binding CanEditSettings}"
+                                  Content="Class 1" />
+                        <CheckBox Margin="0,0,10,0"
+                                  IsChecked="{Binding Connection.UnsolicitedClass2}"
+                                  IsEnabled="{Binding CanEditSettings}"
+                                  Content="Class 2" />
+                        <CheckBox IsChecked="{Binding Connection.UnsolicitedClass3}"
+                                  IsEnabled="{Binding CanEditSettings}"
+                                  Content="Class 3" />
+                    </StackPanel>
+                </StackPanel>
+
                 <TextBlock Grid.Row="0"
                            Grid.RowSpan="2"
-                           Grid.Column="6"
+                           Grid.Column="7"
                            HorizontalAlignment="Right"
                            VerticalAlignment="Bottom"
                            Foreground="#5B5B5B"

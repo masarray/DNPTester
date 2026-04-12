@@ -36,6 +36,8 @@ public sealed class Dnp3MasterService : IDnp3MasterService
 
     public async Task ConnectAsync(ConnectionSettings settings, CancellationToken cancellationToken = default)
     {
+        var profile = BuildPollingProfile(settings);
+
         await Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -48,7 +50,6 @@ public sealed class Dnp3MasterService : IDnp3MasterService
                 }
 
                 ConfigureLoggingOnce();
-                var profile = BuildPollingProfile(settings);
                 _activeSettings = settings;
                 _runtime = new Runtime(new RuntimeConfig { NumCoreThreads = 4 });
                 _channel = settings.Transport switch
@@ -90,6 +91,12 @@ public sealed class Dnp3MasterService : IDnp3MasterService
 
         RaiseConnection("Connected", "DNP3 master enabled");
         WriteEvent("ENGINE", "Session", "Master channel enabled");
+        WriteEvent(
+            "MASTER",
+            "Unsolicited",
+            profile.EnableUnsolicited
+                ? $"Enabled classes={DescribeEventClasses(profile.EnableUnsolicitedClasses)} with fallback event poll {profile.FastEventPollSeconds}s"
+                : $"Disabled; using event poll {profile.FastEventPollSeconds}s");
     }
 
     public async Task DisconnectAsync()
@@ -357,6 +364,27 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             Level = level,
             Summary = summary
         });
+    }
+
+    private static string DescribeEventClasses(EventClasses classes)
+    {
+        var values = new List<string>();
+        if (classes.Class1)
+        {
+            values.Add("Class1");
+        }
+
+        if (classes.Class2)
+        {
+            values.Add("Class2");
+        }
+
+        if (classes.Class3)
+        {
+            values.Add("Class3");
+        }
+
+        return values.Count == 0 ? "None" : string.Join("/", values);
     }
 
     private void PublishValue(string pointType, ushort index, string value, string flags, SourceTimestampInfo sourceTimestamp, string source, string status = "-", string? qualifier = null)

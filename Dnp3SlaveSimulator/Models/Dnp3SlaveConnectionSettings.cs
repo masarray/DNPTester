@@ -10,6 +10,10 @@ public sealed class Dnp3SlaveConnectionSettings : ViewModelBase
     private ushort _outstationAddress = 1024;
     private ushort _masterAddress = 1;
     private int _portRetrySeconds = 5;
+    private bool _enableUnsolicited;
+    private bool _unsolicitedClass1 = true;
+    private bool _unsolicitedClass2;
+    private bool _unsolicitedClass3;
 
     public Dnp3SlaveTransportType Transport
     {
@@ -45,5 +49,29 @@ public sealed class Dnp3SlaveConnectionSettings : ViewModelBase
     {
         get => _portRetrySeconds;
         set => SetProperty(ref _portRetrySeconds, value);
+    }
+
+    public bool EnableUnsolicited
+    {
+        get => _enableUnsolicited;
+        set => SetProperty(ref _enableUnsolicited, value);
+    }
+
+    public bool UnsolicitedClass1
+    {
+        get => _unsolicitedClass1;
+        set => SetProperty(ref _unsolicitedClass1, value);
+    }
+
+    public bool UnsolicitedClass2
+    {
+        get => _unsolicitedClass2;
+        set => SetProperty(ref _unsolicitedClass2, value);
+    }
+
+    public bool UnsolicitedClass3
+    {
+        get => _unsolicitedClass3;
+        set => SetProperty(ref _unsolicitedClass3, value);
     }
 }

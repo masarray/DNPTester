@@ -86,6 +86,7 @@ public sealed class Dnp3OutstationService : IDisposable
 
             _outstation.Enable();
             _isRunning = true;
+            PublishLog("Runtime", $"Unsolicited capability {(settings.EnableUnsolicited ? $"enabled for {DescribeUnsolicitedClasses(settings)}" : "disabled")}");
             PublishState("Running");
         }
     }
@@ -201,10 +202,14 @@ public sealed class Dnp3OutstationService : IDisposable
 
     private static OutstationConfig GetOutstationConfig(Dnp3SlaveConnectionSettings settings)
     {
+        var features = new OutstationFeatures()
+            .WithUnsolicited(settings.EnableUnsolicited);
+
         return new OutstationConfig(
             settings.OutstationAddress,
             settings.MasterAddress,
             new EventBufferConfig(100, 20, 40, 10, 10, 40, 20, 0))
+            .WithFeatures(features)
             .WithDecodeLevel(DecodeLevel.Nothing().WithApplication(AppDecodeLevel.ObjectValues));
     }
 
@@ -245,6 +250,27 @@ public sealed class Dnp3OutstationService : IDisposable
                    or Dnp3OutstationPointType.AnalogInput
                    or Dnp3OutstationPointType.BinaryOutputStatus
                    or Dnp3OutstationPointType.AnalogOutputStatus;
+    }
+
+    private static string DescribeUnsolicitedClasses(Dnp3SlaveConnectionSettings settings)
+    {
+        var classes = new List<string>();
+        if (settings.UnsolicitedClass1)
+        {
+            classes.Add("Class1");
+        }
+
+        if (settings.UnsolicitedClass2)
+        {
+            classes.Add("Class2");
+        }
+
+        if (settings.UnsolicitedClass3)
+        {
+            classes.Add("Class3");
+        }
+
+        return classes.Count == 0 ? "no configured classes" : string.Join("/", classes);
     }
 
     private static void AddPoint(Database db, Dnp3SimulatorSignal signal)
