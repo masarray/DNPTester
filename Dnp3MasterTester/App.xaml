@@ -3,16 +3,32 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F3F3F3" />
         <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="SurfaceAltBrush" Color="#FAFAFA" />
         <SolidColorBrush x:Key="BorderBrushSoft" Color="#D8D8D8" />
         <SolidColorBrush x:Key="TextBrush" Color="#1F1F1F" />
-        <SolidColorBrush x:Key="TextMutedBrush" Color="#5F5F5F" />
         <SolidColorBrush x:Key="AccentBrush" Color="#2563EB" />
         <SolidColorBrush x:Key="AccentSoftBrush" Color="#DCE8FF" />
-        <SolidColorBrush x:Key="DangerBrush" Color="#C62828" />
         <SolidColorBrush x:Key="DangerSoftBrush" Color="#FCEAEA" />
+
+        <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F6F8FF"/>
+
+        <LinearGradientBrush x:Key="AppBackgroundGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#F6F8FF" Offset="0"/>
+            <GradientStop Color="#EEF4FF" Offset="0.5"/>
+            <GradientStop Color="#FAFAFF" Offset="1"/>
+        </LinearGradientBrush>
+
+        <SolidColorBrush x:Key="CardGlassBrush" Color="#CCFFFFFF"/>
+        <SolidColorBrush x:Key="CardBorderBrush" Color="#DCE6F5"/>
+
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#2563EB"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#16A34A"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#D97706"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>
+
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0F172A"/>
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#64748B"/>
 
         <Style TargetType="Window">
             <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
@@ -26,10 +42,18 @@
         </Style>
 
         <Style x:Key="CardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Background" Value="{StaticResource CardGlassBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="18"
+                              ShadowDepth="0"
+                              Opacity="0.08"/>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="TextBox">
@@ -138,23 +162,31 @@
         </Style>
 
         <Style TargetType="DataGrid">
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+            <Setter Property="Background" Value="{StaticResource CardGlassBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="RowBackground" Value="{StaticResource SurfaceBrush}" />
-            <Setter Property="AlternatingRowBackground" Value="#F8F8F8" />
+            <Setter Property="RowBackground" Value="White" />
+            <Setter Property="AlternatingRowBackground" Value="#F8FAFF" />
             <Setter Property="GridLinesVisibility" Value="Horizontal" />
-            <Setter Property="HorizontalGridLinesBrush" Value="#E7E7E7" />
-            <Setter Property="VerticalGridLinesBrush" Value="#F3F3F3" />
+            <Setter Property="HorizontalGridLinesBrush" Value="#E6ECF7" />
+            <Setter Property="VerticalGridLinesBrush" Value="Transparent" />
             <Setter Property="HeadersVisibility" Value="Column" />
             <Setter Property="CanUserAddRows" Value="False" />
+            <Setter Property="RowHeight" Value="34" />
         </Style>
 
         <Style TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="#F7F7F7" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#F1F5FF" Offset="0"/>
+                        <GradientStop Color="#E6EEFF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
             <Setter Property="Padding" Value="10,8" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -162,16 +194,28 @@
 
         <Style TargetType="DataGridCell">
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Padding" Value="8,6" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         </Style>
 
         <Style TargetType="DataGridRow">
-            <Setter Property="MinHeight" Value="32" />
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+
             <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#EEF4FF"/>
+                    <Setter Property="BorderBrush" Value="#C7D8F7"/>
+                </Trigger>
+
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{StaticResource AccentSoftBrush}" />
-                    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                    <Setter Property="Background" Value="#DCE8FF"/>
+                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                    <Setter Property="BorderBrush" Value="#93B4F4"/>
                 </Trigger>
             </Style.Triggers>
         </Style>

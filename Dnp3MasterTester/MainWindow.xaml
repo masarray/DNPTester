@@ -9,7 +9,7 @@
         Width="1580"
         MinHeight="760"
         MinWidth="1240">
-    <Grid Background="{StaticResource AppBackgroundBrush}">
+    <Grid Background="{StaticResource AppBackgroundGradient}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />

@@ -1,6 +1,6 @@
 # CODEX HANDOFF
 
-Last updated: `2026-04-12 16:56:03 +07:00`
+Last updated: `2026-04-13 16:54:09 +07:00`
 Workspace: `D:\Git\DNPTester`
 
 ## Current intent
@@ -286,3 +286,260 @@ Focus on:
 - BOS name resolution in Value Viewer / SOE / SCADA Events / Command Tracker
 
 Only after that, continue to explicit ElectraNet command-feedback mapping.
+
+## Strategic progress from 2026-04-13 session
+
+This session did **not** add new code.
+
+The work today was product-definition and report-architecture alignment so the home PC can continue implementation in the correct direction.
+
+The user clarified the immediate product goal:
+
+- not "more UI"
+- not "general analyzer polish"
+- but a credible workflow where:
+  - event logs successfully received
+  - command lifecycle successfully reaches feedback
+  - then the software generates a professional printable FAT report
+
+### Key product conclusion reached today
+
+From a senior protocol analyzer / FAT-tool perspective, the next major product milestone should be:
+
+- structured FAT report generation
+
+This is now considered a higher-value near-term milestone than more visual refinement.
+
+The report should transform the tool from:
+
+- engineering viewer / live audit workspace
+
+into:
+
+- printable FAT evidence generator / interoperability assessment instrument
+
+### Important clarification made today
+
+The user challenged whether `Command Testing Workflow` is already done.
+
+Conclusion:
+
+- the command path is already functionally present
+- command send/feedback correlation already exists in meaningful form
+- however, what is still missing is the **formal FAT evidence/report layer**, not the basic command mechanism itself
+
+This means the product direction should shift from:
+
+- "make command work"
+
+to:
+
+- "make command results printable, defensible, and assessable"
+
+### Recommended product blueprint decided today
+
+The report system should be built in 5 layers:
+
+1. `Test Session Layer`
+- session identity, project, relay, transport, profile, operator, timing
+
+2. `FAT Item Layer`
+- one structured result per FAT activity like `7.5.1` ... `7.5.8`
+
+3. `Evidence Layer`
+- communication evidence
+- point read evidence
+- event evidence
+- command evidence
+
+4. `Verdict Engine Layer`
+- `PASS`
+- `PASS WITH WARNING`
+- `FAIL`
+- `INCONCLUSIVE`
+- `NOT TESTED`
+
+5. `Report Generation Layer`
+- printable HTML first
+- PDF later
+
+### Report architecture direction chosen today
+
+The report should **not** be generated from live UI grids.
+
+It should be generated from structured snapshot/evidence models.
+
+This principle was explicitly decided today:
+
+- branding is editable
+- evidence is frozen after session finalization
+- report output comes from snapshot models, not from whatever the UI happens to show
+
+### Branding / logo strategy decided today
+
+The user asked how customer/company logos should work in printable reports.
+
+Recommended strategy:
+
+- create a `Report Branding` concept separate from technical evidence
+- allow user branding inputs such as:
+  - company name
+  - customer name
+  - project name
+  - primary logo
+  - optional secondary/customer logo
+  - footer text
+- embed logo into final report output so generated report is portable
+- permit branding edits
+- do **not** permit silent editing of raw evidence after session finalization
+
+This separation was identified as critical for report credibility.
+
+### Report page blueprint decided today
+
+The report should be organized into these sections:
+
+1. `Cover Page`
+- logo area
+- company/customer/project identity
+- DUT identity
+- session/report ID
+- prepared/reviewed/approved block
+
+2. `Executive Summary`
+- overall verdict
+- counts of pass/warning/fail
+- communication summary
+- event summary
+- command summary
+- major findings
+
+3. `FAT Result Matrix`
+- one row per FAT item
+
+4. `Detailed Evidence Per FAT Item`
+- objective
+- acceptance criteria
+- observed behavior
+- evidence table
+- verdict rationale
+
+5. `Command Lifecycle Evidence`
+- explicit command issue/select/operate/feedback/latency trail
+
+6. `Appendix`
+- SCADA events
+- SOE audit extract
+- configuration snapshot
+
+### FAT-driven reporting alignment
+
+The user provided this FAT checklist structure:
+
+- `7.5.1` communication establishment
+- `7.5.2` point read verification
+- `7.5.3` binary indication mapping
+- `7.5.4` protection event reporting
+- `7.5.5` non-operation verification
+- `7.5.6` setting group status verification
+- `7.5.7` setting group write verification
+- `7.5.8` communication recovery
+
+Conclusion reached:
+
+- this FAT list is strong as a **test catalogue**
+- but it is not yet enough by itself for a professional report
+- the software must map each FAT item to structured evidence and verdict logic
+
+### Field-by-field specification completed today
+
+A field specification was defined at planning level for these report sections:
+
+- cover page fields
+- executive summary fields
+- FAT result matrix row fields
+- detailed FAT item template fields
+- communication establishment evidence fields
+- point read verification evidence fields
+- binary mapping evidence fields
+- protection event evidence fields
+- non-operation verification fields
+- setting group status verification fields
+- setting group write / command lifecycle fields
+- communication recovery fields
+- appendix field sets
+- branding settings fields
+- session finalization snapshot fields
+
+This work is important because implementation can now start from a defined information model instead of inventing report structure ad hoc.
+
+### Concrete implementation sequence agreed today
+
+Implementation should start in this order:
+
+1. `ReportBrandingSettings`
+2. `FatTestSessionSnapshot`
+3. `FatTestItemResult`
+4. `EventEvidenceRecord`
+5. `CommandEvidenceRecord`
+6. HTML printable report renderer
+7. session finalization / evidence freeze
+
+Important implementation principle:
+
+- do **not** start by directly templating UI tables into HTML
+
+### Suggested immediate next step for home PC
+
+The most correct next implementation milestone is now:
+
+- build the report-domain models and snapshot layer first
+
+Specifically:
+
+- `ReportBrandingSettings`
+- `FatTestSessionSnapshot`
+- `FatTestItemResult`
+- `EventEvidenceRecord`
+- `CommandEvidenceRecord`
+
+Then:
+
+- generate printable HTML report from these objects
+
+### What was NOT done today
+
+- no new code was added
+- no report generator was implemented yet
+- no XAML was changed
+- no protocol logic was changed
+- no master/slave runtime behavior was modified
+
+This session was purely:
+
+- product strategy
+- report blueprint
+- implementation sequencing
+
+### Guidance to next Codex on home PC
+
+If resuming after this handoff, do **not** start from:
+
+- cosmetic report CSS only
+- PDF export first
+- UI preview first
+
+Start from:
+
+- domain models for report and evidence snapshots
+
+Then implement:
+
+- printable HTML report MVP
+
+The goal is to make the tool feel like a professional DNP3 FAT evidence instrument, where:
+
+- the analyzer captures truth
+- the report communicates that truth clearly
+- branding is professional
+- evidence remains defensible

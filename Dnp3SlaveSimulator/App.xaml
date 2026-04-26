@@ -10,9 +10,18 @@
         <SolidColorBrush x:Key="TextMutedBrush" Color="#5F5F5F" />
         <SolidColorBrush x:Key="AccentBrush" Color="#2563EB" />
         <SolidColorBrush x:Key="DangerBrush" Color="#C62828" />
+        <LinearGradientBrush x:Key="AppBackgroundGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#F6F8FF" Offset="0"/>
+            <GradientStop Color="#EEF4FF" Offset="0.5"/>
+            <GradientStop Color="#FAFAFF" Offset="1"/>
+        </LinearGradientBrush>
+
+        <SolidColorBrush x:Key="CardGlassBrush" Color="#CCFFFFFF"/>
+        <SolidColorBrush x:Key="CardBorderBrush" Color="#DCE6F5"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0F172A"/>
 
         <Style TargetType="Window">
-            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
+            <Setter Property="Background" Value="{StaticResource AppBackgroundGradient}" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="FontFamily" Value="Segoe UI" />
         </Style>
@@ -56,11 +65,16 @@
         </Style>
 
         <Style TargetType="DataGrid">
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+            <Setter Property="Background" Value="{StaticResource CardGlassBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="RowBackground" Value="#FFFFFFFF" />
+            <Setter Property="AlternatingRowBackground" Value="#F8FAFF" />
+            <Setter Property="GridLinesVisibility" Value="None" />
+            <Setter Property="HeadersVisibility" Value="Column" />
             <Setter Property="CanUserAddRows" Value="False" />
-            <Setter Property="AlternatingRowBackground" Value="#F8F8F8" />
-            <Setter Property="SelectionUnit" Value="FullRow" />
+            <Setter Property="SelectionMode" Value="Single"/>
         </Style>
     </Application.Resources>
 </Application>
