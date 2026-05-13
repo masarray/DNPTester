@@ -449,7 +449,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             PublishScadaEvent("Command Event", source, pointType, index, value, previous?.Value ?? string.Empty, status, sourceTimestamp.TimeQuality, SourceReason.CommandResponse, $"Command event recorded with status {status}");
         }
 
-        TryCorrelateCommandFeedback(pointType, index, value, status, sourceTimestamp);
+        TryCorrelateCommandFeedback(pointType, index, value, status, sourceTimestamp, previous);
     }
 
     private void PublishScadaEvent(string eventType, string source, string pointType, ushort index, string value, string previousValue, string status, string quality, SourceReason sourceReason, string detail)
@@ -521,14 +521,15 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             definition.EnableStartupIntegrity,
             definition.KeepAliveTimeout);
 
-        var unsol = profile.EnableUnsolicited ? EventClasses.All() : EventClasses.None();
+        var disableUnsolicited = profile.EnableUnsolicited ? EventClasses.None() : EventClasses.All();
+        var enableUnsolicited = profile.EnableUnsolicited ? EventClasses.All() : EventClasses.None();
         var startup = profile.EnableStartupIntegrity ? Classes.All() : Classes.None();
         var autoEvent = profile.EnableAutoEventScan ? EventClasses.All() : EventClasses.None();
 
         return profile with
         {
-            DisableUnsolicitedClasses = unsol,
-            EnableUnsolicitedClasses = unsol,
+            DisableUnsolicitedClasses = disableUnsolicited,
+            EnableUnsolicitedClasses = enableUnsolicited,
             StartupIntegrityClasses = startup,
             AutoEventScanClasses = autoEvent
         };
@@ -761,25 +762,32 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         }
     }
 
-    private void TryCorrelateCommandFeedback(string pointType, ushort index, string value, string status, SourceTimestampInfo sourceTimestamp)
+    private void TryCorrelateCommandFeedback(
+        string pointType,
+        ushort index,
+        string value,
+        string status,
+        SourceTimestampInfo sourceTimestamp,
+        ValueViewerRow? previousValue)
     {
         CommandTransactionState? current;
-        ValueViewerRow? latestValue;
         lock (_commandSync)
         {
             current = _latestCommandTransaction;
         }
-
-        _latestValues.TryGetValue($"{pointType}:{index}", out latestValue);
 
         if (current is null || current.IsTerminal || current.FeedbackAtLocal.HasValue)
         {
             return;
         }
 
+        var hasConfiguredFeedback = !string.IsNullOrWhiteSpace(current.ExpectedFeedbackPointType) && current.ExpectedFeedbackIndex.HasValue;
         var expectedPointType = current.ExpectedFeedbackPointType ?? current.PointType;
         var expectedPointIndex = current.ExpectedFeedbackIndex ?? current.PointIndex;
-        if (!string.Equals(pointType, expectedPointType, StringComparison.OrdinalIgnoreCase) || index != expectedPointIndex)
+        var isConfiguredFeedbackPoint = string.Equals(pointType, expectedPointType, StringComparison.OrdinalIgnoreCase) && index == expectedPointIndex;
+        var isCommandEventFallback = !hasConfiguredFeedback && IsCommandEventPoint(pointType) && index == current.PointIndex;
+
+        if (!isConfiguredFeedbackPoint && !isCommandEventFallback)
         {
             return;
         }
@@ -802,18 +810,20 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         }
 
         var expectedValue = GetExpectedBinaryValue(current.Operation);
-        var evidenceKind = ResolveFeedbackEvidenceKind(false, pointType, latestValue, value);
-        var matched = string.Equals(value, expectedValue, StringComparison.OrdinalIgnoreCase);
-        var feedbackResult = $"Status Feedback: {value}";
+        var isCommandEvent = IsCommandEventPoint(pointType);
+        var evidenceKind = ResolveFeedbackEvidenceKind(isCommandEvent, pointType, previousValue, value);
+        var statusIndicatesFailure = isCommandEvent && !IsPositiveCommandStatus(status);
+        var matched = string.Equals(value, expectedValue, StringComparison.OrdinalIgnoreCase) && !statusIndicatesFailure;
+        var feedbackResult = isCommandEvent
+            ? $"Command Event: {value} / {status}"
+            : $"Status Feedback: {value}";
         var verdict = matched ? "Success" : "Feedback Mismatch";
 
         CancelCommandFeedbackTimeout();
         AppendCommandLifecycle(
             current.TransactionId,
             matched ? "Feedback Matched" : "Feedback Mismatch",
-            evidenceKind == CommandFeedbackEvidenceKind.StatusChange
-                ? $"Configured feedback point changed to {value}, expected {expectedValue}."
-                : $"Configured feedback point read as {value}, expected {expectedValue} (simple rule).",
+            BuildFeedbackLifecycleDetail(evidenceKind, value, expectedValue, status),
             update => update with
             {
                 FeedbackAtLocal = observedAt,
@@ -830,6 +840,31 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             "Transaction Completed",
             $"Command transaction completed with verdict: {verdict}.",
             update => update);
+    }
+
+    private static bool IsCommandEventPoint(string pointType)
+    {
+        return pointType.Contains("Command Event", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsPositiveCommandStatus(string status)
+    {
+        if (string.IsNullOrWhiteSpace(status) || status == "-")
+        {
+            return true;
+        }
+
+        return status.Contains("Success", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildFeedbackLifecycleDetail(CommandFeedbackEvidenceKind evidenceKind, string value, string expectedValue, string status)
+    {
+        return evidenceKind switch
+        {
+            CommandFeedbackEvidenceKind.CommandEvent => $"Command-event feedback reported {value} with status {status}; expected {expectedValue}.",
+            CommandFeedbackEvidenceKind.StatusChange => $"Configured feedback point changed to {value}, expected {expectedValue}.",
+            _ => $"Configured feedback point read as {value}, expected {expectedValue} (simple rule)."
+        };
     }
 
     private static string GetExpectedBinaryValue(string operation)

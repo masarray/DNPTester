@@ -158,9 +158,21 @@ public sealed class MainViewModel : ViewModelBase
     public int PointCatalogCount => PointCatalog.Count;
     public string ReportTitle => "DNP3 Interoperability Test Report";
     public string ReportGeneratedAt => DateTime.Now.ToString("yyyy-MM-dd HH:mm");
-    public string LatestEventSummary => EventLogs.FirstOrDefault()?.Detail
-        ?? EventLogs.FirstOrDefault()?.EventType
-        ?? "No SCADA events captured yet.";
+    public string LatestEventSummary
+    {
+        get
+        {
+            var row = EventLogs.FirstOrDefault();
+            if (row is null)
+            {
+                return "No SCADA events captured yet.";
+            }
+
+            return !string.IsNullOrWhiteSpace(row.Detail)
+                ? row.Detail
+                : row.EventType;
+        }
+    }
     public string LatestSoeSummary
     {
         get
