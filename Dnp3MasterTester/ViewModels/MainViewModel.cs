@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
+using System.Collections.Specialized;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Threading;
 using Dnp3MasterTester.Models;
 using Dnp3MasterTester.Services;
 using dnp3;
@@ -11,13 +14,24 @@ namespace Dnp3MasterTester.ViewModels;
 public sealed class MainViewModel : ViewModelBase
 {
     private const int MaxRows = 500;
+    private const int UiFlushIntervalMs = 250;
+    private const int ReportSnapshotIntervalMs = 1000;
+    private const int MaxRowsPerFlush = 40;
     private readonly IDnp3MasterService _service;
     private readonly Dictionary<string, PointCatalogEntry> _pointCatalog = new(StringComparer.Ordinal);
     private readonly JsonSerializerOptions _profileSerializerOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
+    private readonly ConcurrentQueue<EventLogEntry> _pendingEventLogs = new();
+    private readonly ConcurrentQueue<SoeEventRow> _pendingSoeAudit = new();
+    private readonly ConcurrentQueue<LinkTraceEntry> _pendingLinkTrace = new();
+    private readonly ConcurrentDictionary<string, ValueViewerRow> _pendingValueRows = new(StringComparer.Ordinal);
+    private readonly DispatcherTimer _uiFlushTimer;
 
     private string _connectionState = "Idle";
     private string _connectionDetail = "Disconnected";
     private bool _isBusy;
+    private bool _isBufferedCollectionUpdate;
+    private bool _hasBufferedWorkspaceChanges;
+    private DateTime _lastReportSnapshotAt = DateTime.MinValue;
     private PointCatalogProfile? _selectedPointCatalogProfile;
     private PointCatalogEntry? _selectedPointCatalogEntry;
     private ushort _commandPointIndex;
@@ -65,6 +79,11 @@ public sealed class MainViewModel : ViewModelBase
         RefreshSerialPortsCommand = new RelayCommand(_ => RefreshSerialPorts());
         RefreshSerialPorts();
         SelectedPointCatalogProfile = PointCatalogProfiles.FirstOrDefault();
+        ValueViewer.CollectionChanged += OnWorkspaceCollectionChanged;
+        EventLogs.CollectionChanged += OnWorkspaceCollectionChanged;
+        SoeAudit.CollectionChanged += OnWorkspaceCollectionChanged;
+        LinkTrace.CollectionChanged += OnWorkspaceCollectionChanged;
+        PointCatalog.CollectionChanged += OnWorkspaceCollectionChanged;
 
         _service.ConnectionStateChanged += (_, snapshot) => Dispatch(() =>
         {
@@ -76,10 +95,17 @@ public sealed class MainViewModel : ViewModelBase
             LatestCommandTransaction = Enrich(transaction);
             ReplaceLifecycle(transaction.Lifecycle);
         });
-        _service.EventLogReceived += (_, entry) => Dispatch(() => InsertTop(EventLogs, Enrich(entry)));
-        _service.LinkTraceReceived += (_, entry) => Dispatch(() => InsertTop(LinkTrace, entry));
-        _service.SoeEventReceived += (_, row) => Dispatch(() => InsertTop(SoeAudit, Enrich(row)));
-        _service.ValueReceived += (_, row) => Dispatch(() => UpsertValue(Enrich(row)));
+        _service.EventLogReceived += (_, entry) => _pendingEventLogs.Enqueue(entry);
+        _service.LinkTraceReceived += (_, entry) => _pendingLinkTrace.Enqueue(entry);
+        _service.SoeEventReceived += (_, row) => _pendingSoeAudit.Enqueue(row);
+        _service.ValueReceived += (_, row) => _pendingValueRows[BuildCatalogKey(row.PointType, row.Index)] = row;
+
+        _uiFlushTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(UiFlushIntervalMs)
+        };
+        _uiFlushTimer.Tick += (_, _) => FlushBufferedTelemetry();
+        _uiFlushTimer.Start();
     }
 
     public ConnectionSettings Settings { get; }
@@ -100,6 +126,9 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<EventLogEntry> EventLogs { get; } = new();
     public ObservableCollection<SoeEventRow> SoeAudit { get; } = new();
     public ObservableCollection<LinkTraceEntry> LinkTrace { get; } = new();
+    public ObservableCollection<EventLogEntry> ReportEvents { get; } = new();
+    public ObservableCollection<SoeEventRow> ReportSoeEvents { get; } = new();
+    public ObservableCollection<LinkTraceEntry> ReportTraceEntries { get; } = new();
 
     public string ConnectionProfile => $"{Settings.Transport} / Master {Settings.MasterAddress} / Outstation {Settings.OutstationAddress}";
     public string PointCatalogProfileName => SelectedPointCatalogProfile?.Name ?? "No Point Profile";
@@ -122,6 +151,27 @@ public sealed class MainViewModel : ViewModelBase
     public string LatestAcceptanceLatency => LatestCommandTransaction?.AcceptanceLatencyText ?? "-";
     public string LatestFeedbackLatency => LatestCommandTransaction?.FeedbackLatencyText ?? "-";
     public string LatestFeedbackMatch => LatestCommandTransaction?.FeedbackMatchedText ?? "No";
+    public int LiveValueCount => ValueViewer.Count;
+    public int EventLogCount => EventLogs.Count;
+    public int SoeAuditCount => SoeAudit.Count;
+    public int LinkTraceCount => LinkTrace.Count;
+    public int PointCatalogCount => PointCatalog.Count;
+    public string ReportTitle => "DNP3 Interoperability Test Report";
+    public string ReportGeneratedAt => DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+    public string LatestEventSummary => EventLogs.FirstOrDefault()?.Detail
+        ?? EventLogs.FirstOrDefault()?.EventType
+        ?? "No SCADA events captured yet.";
+    public string LatestSoeSummary
+    {
+        get
+        {
+            var row = SoeAudit.FirstOrDefault();
+            return row is null
+                ? "No SOE callbacks captured yet."
+                : $"{row.SourceTimestampText} - {row.PointLabel} = {row.Value}";
+        }
+    }
+    public string LatestTraceSummary => LinkTrace.FirstOrDefault()?.Summary ?? "No protocol trace records yet.";
 
     public RelayCommand ConnectCommand { get; }
     public RelayCommand DisconnectCommand { get; }
@@ -383,15 +433,114 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    private void FlushBufferedTelemetry()
+    {
+        if (Application.Current?.Dispatcher.HasShutdownStarted == true ||
+            Application.Current?.Dispatcher.HasShutdownFinished == true)
+        {
+            _uiFlushTimer.Stop();
+            return;
+        }
+
+        var hadChanges = false;
+        _isBufferedCollectionUpdate = true;
+        try
+        {
+            hadChanges |= FlushLatestValues();
+            hadChanges |= FlushQueue(_pendingEventLogs, EventLogs, Enrich);
+            hadChanges |= FlushQueue(_pendingSoeAudit, SoeAudit, Enrich);
+            hadChanges |= FlushQueue(_pendingLinkTrace, LinkTrace, static row => row);
+        }
+        finally
+        {
+            _isBufferedCollectionUpdate = false;
+        }
+
+        if (hadChanges || _hasBufferedWorkspaceChanges)
+        {
+            _hasBufferedWorkspaceChanges = false;
+            RaiseWorkspaceSummaryChanged();
+            RefreshReportSnapshotIfDue();
+        }
+    }
+
+    private void RefreshReportSnapshotIfDue()
+    {
+        var now = DateTime.UtcNow;
+        if ((now - _lastReportSnapshotAt).TotalMilliseconds < ReportSnapshotIntervalMs)
+        {
+            return;
+        }
+
+        _lastReportSnapshotAt = now;
+        ReplaceSnapshot(ReportEvents, EventLogs.Take(8));
+        ReplaceSnapshot(ReportSoeEvents, SoeAudit.Take(8));
+        ReplaceSnapshot(ReportTraceEntries, LinkTrace.Take(6));
+    }
+
+    private static void ReplaceSnapshot<T>(ObservableCollection<T> target, IEnumerable<T> source)
+    {
+        target.Clear();
+        foreach (var item in source)
+        {
+            target.Add(item);
+        }
+    }
+
+    private bool FlushLatestValues()
+    {
+        var changed = false;
+        foreach (var key in _pendingValueRows.Keys.Take(MaxRowsPerFlush * 2).ToArray())
+        {
+            if (_pendingValueRows.TryRemove(key, out var row))
+            {
+                UpsertValue(Enrich(row));
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    private static bool FlushQueue<T>(
+        ConcurrentQueue<T> pending,
+        ObservableCollection<T> target,
+        Func<T, T> transform)
+    {
+        var changed = false;
+        var count = 0;
+        while (count < MaxRowsPerFlush && pending.TryDequeue(out var item))
+        {
+            InsertTop(target, transform(item));
+            changed = true;
+            count++;
+        }
+
+        return changed;
+    }
+
     private static void Dispatch(Action action)
     {
-        if (Application.Current.Dispatcher.CheckAccess())
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        if (dispatcher.CheckAccess())
         {
             action();
             return;
         }
 
-        _ = Application.Current.Dispatcher.BeginInvoke(action);
+        try
+        {
+            _ = dispatcher.BeginInvoke(action);
+        }
+        catch (InvalidOperationException)
+        {
+            // The application can be closing while DNP3 service callbacks are still draining.
+        }
     }
 
     private void RaiseCommandState()
@@ -766,5 +915,29 @@ public sealed class MainViewModel : ViewModelBase
         PointCatalogProfiles[profileIndex] = reloaded;
         SelectedPointCatalogProfile = reloaded;
         ConnectionDetail = $"Reloaded point database profile: {SelectedPointCatalogProfile.Name}";
+    }
+
+    private void OnWorkspaceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (_isBufferedCollectionUpdate)
+        {
+            _hasBufferedWorkspaceChanges = true;
+            return;
+        }
+
+        RaiseWorkspaceSummaryChanged();
+    }
+
+    private void RaiseWorkspaceSummaryChanged()
+    {
+        RaisePropertyChanged(nameof(LiveValueCount));
+        RaisePropertyChanged(nameof(EventLogCount));
+        RaisePropertyChanged(nameof(SoeAuditCount));
+        RaisePropertyChanged(nameof(LinkTraceCount));
+        RaisePropertyChanged(nameof(PointCatalogCount));
+        RaisePropertyChanged(nameof(ReportGeneratedAt));
+        RaisePropertyChanged(nameof(LatestEventSummary));
+        RaisePropertyChanged(nameof(LatestSoeSummary));
+        RaisePropertyChanged(nameof(LatestTraceSummary));
     }
 }

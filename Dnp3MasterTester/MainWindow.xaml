@@ -9,229 +9,568 @@
         Width="1580"
         MinHeight="760"
         MinWidth="1240">
+    <Window.Resources>
+        <Style x:Key="GridTextLeftStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="Margin" Value="8,0,8,0" />
+        </Style>
+
+        <Style x:Key="GridTextCenterStyle" TargetType="TextBlock" BasedOn="{StaticResource GridTextLeftStyle}">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="Margin" Value="6,0,6,0" />
+        </Style>
+
+        <Style x:Key="GridTextRightStyle" TargetType="TextBlock" BasedOn="{StaticResource GridTextLeftStyle}">
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="TextAlignment" Value="Right" />
+            <Setter Property="Margin" Value="6,0,10,0" />
+        </Style>
+
+        <Style x:Key="GridTextDetailStyle" TargetType="TextBlock" BasedOn="{StaticResource GridTextLeftStyle}">
+            <Setter Property="TextWrapping" Value="NoWrap" />
+        </Style>
+
+        <Style x:Key="ReportTableCellStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="ReportTableMutedCellStyle" TargetType="TextBlock" BasedOn="{StaticResource ReportTableCellStyle}">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        </Style>
+    </Window.Resources>
     <Grid Background="{StaticResource AppBackgroundGradient}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0"
-                Style="{StaticResource CardBorderStyle}"
-                Margin="16,16,16,12"
-                Padding="20">
+                Background="#F7FFFFFF"
+                BorderBrush="{StaticResource CardBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="18,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Margin="0,0,18,0">
-                    <TextBlock Text="DNP3 Interoperability Tester"
-                               FontSize="18"
-                               FontWeight="Bold" />
-                    <TextBlock Margin="0,6,0,0"
-                               Foreground="{StaticResource TextMutedBrush}"
-                               Text="Protection Relay FAT for TCP and Serial sessions. Review SCADA events, SOE evidence, and protocol trace in a single workspace."
-                               TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="42"
+                            Height="42"
+                            CornerRadius="8"
+                            Background="{StaticResource InkSoftBrush}"
+                            Margin="0,0,14,0">
+                        <TextBlock Text="D3"
+                                   Foreground="White"
+                                   FontWeight="Bold"
+                                   FontSize="15"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel>
+                        <TextBlock Text="DNP3 Interoperability Tester"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <TextBlock Text="{Binding ConnectionState}" FontWeight="SemiBold" />
+                            <TextBlock Text="  /  " Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Text="{Binding ConnectionProfile}" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Text="  /  " Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Text="{Binding ConnectionTarget, Mode=OneWay}" Foreground="{StaticResource TextMutedBrush}" />
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
 
-                <WrapPanel Grid.Column="1"
-                           HorizontalAlignment="Right"
-                           VerticalAlignment="Center">
-                    <Button Style="{StaticResource ToolbarButtonStyle}"
-                            Click="OpenConnectionSetup_Click"
-                            ToolTip="Connection Setup">
-                        <StackPanel>
+                <Border Grid.Column="1"
+                        Background="#F2F7F9"
+                        BorderBrush="#D4E0E8"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="5"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource ToolbarButtonStyle}"
+                                Click="OpenConnectionSetup_Click"
+                                ToolTip="Connection Setup">
                             <Path Style="{StaticResource ToolbarIconPathStyle}"
-                                  Data="M12 3 L19 7 V17 L12 21 L5 17 V7 Z M9 12 H15 M12 9 V15" />
-                            <TextBlock Text="Configure" Style="{StaticResource ToolbarButtonLabelStyle}" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button Style="{StaticResource ToolbarPrimaryButtonStyle}"
-                            Command="{Binding ConnectCommand}"
-                            ToolTip="Connect">
-                        <StackPanel>
+                                  Data="M20 13 C20 18 16.5 20.5 12.34 21.95 A1 1 0 0 1 11.67 21.94 C7.5 20.5 4 18 4 13 V6 A1 1 0 0 1 5 5 C7 5 9.5 3.8 11.24 2.28 A1.17 1.17 0 0 1 12.76 2.28 C14.51 3.81 17 5 19 5 A1 1 0 0 1 20 6 Z M12 8 V16 M8 12 H16" />
+                        </Button>
+                        <Button Style="{StaticResource ToolbarPrimaryButtonStyle}"
+                                Command="{Binding ConnectCommand}"
+                                ToolTip="Connect">
                             <Path Style="{StaticResource ToolbarPrimaryIconPathStyle}"
-                                  Data="M5 5 H19 A2 2 0 0 1 21 7 V15 A2 2 0 0 1 19 17 H5 A2 2 0 0 1 3 15 V7 A2 2 0 0 1 5 5 Z M10 9 L15 12 L10 15 Z" />
-                            <TextBlock Text="Connect" Style="{StaticResource ToolbarButtonLabelStyle}" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button Style="{StaticResource ToolbarDangerButtonStyle}"
-                            Command="{Binding DisconnectCommand}"
-                            ToolTip="Disconnect">
-                        <StackPanel>
+                                  Data="M12 22 A10 10 0 1 0 12 2 A10 10 0 0 0 12 22 Z M10 8 L16 12 L10 16 Z" />
+                        </Button>
+                        <Button Style="{StaticResource ToolbarDangerButtonStyle}"
+                                Command="{Binding DisconnectCommand}"
+                                ToolTip="Disconnect">
                             <Path Style="{StaticResource ToolbarDangerIconPathStyle}"
-                                  Data="M5 5 H19 A2 2 0 0 1 21 7 V15 A2 2 0 0 1 19 17 H5 A2 2 0 0 1 3 15 V7 A2 2 0 0 1 5 5 Z M9 9 L15 15 M15 9 L9 15" />
-                            <TextBlock Text="Disconnect" Style="{StaticResource ToolbarButtonLabelStyle}" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button Style="{StaticResource ToolbarButtonStyle}"
-                            Command="{Binding IntegrityPollCommand}"
-                            ToolTip="Integrity Poll">
-                        <StackPanel>
+                                  Data="M18 6 L6 18 M6 6 L18 18" />
+                        </Button>
+                        <Button Style="{StaticResource ToolbarButtonStyle}"
+                                Command="{Binding IntegrityPollCommand}"
+                                ToolTip="Integrity Poll">
                             <Path Style="{StaticResource ToolbarIconPathStyle}"
-                                  Data="M5 6 H19 M5 11 H19 M5 16 H13 M16 15 L18 17 L22 13" />
-                            <TextBlock Text="Integrity" Style="{StaticResource ToolbarButtonLabelStyle}" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button Style="{StaticResource ToolbarButtonStyle}"
-                            Command="{Binding EventPollCommand}"
-                            ToolTip="Event Poll">
-                        <StackPanel>
+                                  Data="M3 6 H15 M3 12 H12 M3 18 H15 M18 9 L21 12 L18 15 M21 12 H14" />
+                        </Button>
+                        <Button Style="{StaticResource ToolbarButtonStyle}"
+                                Command="{Binding EventPollCommand}"
+                                ToolTip="Event Poll">
                             <Path Style="{StaticResource ToolbarIconPathStyle}"
-                                  Data="M4 12 H8 L10 6 L14 18 L16 12 H20" />
-                            <TextBlock Text="Event Poll" Style="{StaticResource ToolbarButtonLabelStyle}" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button Style="{StaticResource ToolbarButtonStyle}"
-                            Command="{Binding LinkStatusCommand}"
-                            ToolTip="Link Status">
-                        <StackPanel>
+                                  Data="M22 12 H18 L15 21 L9 3 L6 12 H2" />
+                        </Button>
+                        <Button Style="{StaticResource ToolbarButtonStyle}"
+                                Command="{Binding LinkStatusCommand}"
+                                ToolTip="Link Status">
                             <Path Style="{StaticResource ToolbarIconPathStyle}"
-                                  Data="M12 4 V8 M12 16 V20 M4 12 H8 M16 12 H20 M8 12 A4 4 0 1 0 16 12 A4 4 0 1 0 8 12" />
-                            <TextBlock Text="Link Status" Style="{StaticResource ToolbarButtonLabelStyle}" />
-                        </StackPanel>
-                    </Button>
-                </WrapPanel>
+                                  Data="M12 2 V6 M12 18 V22 M2 12 H6 M18 12 H22 M12 16 A4 4 0 1 0 12 8 A4 4 0 0 0 12 16 Z" />
+                        </Button>
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" Margin="16,0,16,12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.1*" />
-                <ColumnDefinition Width="1*" />
-                <ColumnDefinition Width="1*" />
-                <ColumnDefinition Width="1*" />
-            </Grid.ColumnDefinitions>
-
-            <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,10,0">
-                <StackPanel>
-                    <TextBlock Text="Session Status" Foreground="{StaticResource TextMutedBrush}" />
-                    <TextBlock Margin="0,6,0,0" FontSize="24" FontWeight="SemiBold" Text="{Binding ConnectionState}" />
-                    <TextBlock Margin="0,4,0,0" Text="{Binding ConnectionDetail}" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-
-            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,10,0">
-                <StackPanel>
-                    <TextBlock Text="Connection Profile" Foreground="{StaticResource TextMutedBrush}" />
-                    <TextBlock Margin="0,6,0,0" FontSize="16" FontWeight="SemiBold" Text="{Binding ConnectionProfile}" />
-                    <TextBlock Margin="0,4,0,0" Text="{Binding ConnectionTarget, Mode=OneWay}" />
-                </StackPanel>
-            </Border>
-
-            <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,10,0">
-                <StackPanel>
-                    <TextBlock Text="Analyzer Profile" Foreground="{StaticResource TextMutedBrush}" />
-                    <ComboBox Margin="0,6,0,0"
-                              ItemsSource="{Binding PointCatalogProfiles}"
-                              SelectedItem="{Binding SelectedPointCatalogProfile}"
-                              DisplayMemberPath="Name" />
-                    <TextBlock Margin="0,8,0,0" Text="Polling Baseline" Foreground="{StaticResource TextMutedBrush}" />
-                    <TextBlock Margin="0,6,0,0" Text="{Binding PollingProfile}" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-
-            <Border Grid.Column="3" Style="{StaticResource CardBorderStyle}" Padding="16">
-                <StackPanel>
-                    <TextBlock Text="Current Setup" Foreground="{StaticResource TextMutedBrush}" />
-                    <TextBlock Margin="0,6,0,0">
-                        <Run Text="Transport: " />
-                        <Run Text="{Binding Settings.Transport}" />
-                    </TextBlock>
-                    <TextBlock Margin="0,4,0,0">
-                        <Run Text="Profile: " />
-                        <Run Text="{Binding Settings.PollingProfile}" />
-                    </TextBlock>
-                    <TextBlock Margin="0,4,0,0">
-                        <Run Text="Master / Outstation: " />
-                        <Run Text="{Binding Settings.MasterAddress}" />
-                        <Run Text=" / " />
-                        <Run Text="{Binding Settings.OutstationAddress}" />
-                    </TextBlock>
-                    <TextBlock Margin="0,4,0,0">
-                        <Run Text="Point Profile: " />
-                        <Run Text="{Binding PointCatalogProfileName, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock Margin="0,4,0,0">
-                        <Run Text="Timeout / Event Poll: " />
-                        <Run Text="{Binding Settings.RequestTimeoutSeconds}" />
-                        <Run Text="s / " />
-                        <Run Text="{Binding Settings.EventPollSeconds}" />
-                        <Run Text="s" />
-                    </TextBlock>
-                    <TextBlock Margin="0,4,0,0" Text="{Binding SerialProfile}" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-        </Grid>
-
-        <Border Grid.Row="2"
-                Style="{StaticResource CardBorderStyle}"
-                Margin="16,0,16,16"
-                Padding="14">
-            <TabControl>
-                <TabItem Header="Overview">
-                    <Grid Margin="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1*" />
-                            <ColumnDefinition Width="1*" />
-                        </Grid.ColumnDefinitions>
-
-                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,8,0">
-                            <StackPanel>
-                                <TextBlock Text="Audit Scope" FontSize="16" FontWeight="SemiBold" />
-                                <TextBlock Margin="0,10,0,0" Text="SCADA Events contains binary state change and command event evidence." TextWrapping="Wrap" />
-                                <TextBlock Margin="0,6,0,0" Text="SOE Audit retains callback-oriented forensic records." TextWrapping="Wrap" />
-                                <TextBlock Margin="0,6,0,0" Text="Link Trace is reserved for engine and protocol diagnostics." TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16">
-                            <StackPanel>
-                                <TextBlock Text="Session Summary" FontSize="16" FontWeight="SemiBold" />
-                                <TextBlock Margin="0,10,0,0" Text="{Binding ConnectionProfile}" />
-                                <TextBlock Margin="0,6,0,0" Text="{Binding ConnectionTarget, Mode=OneWay}" />
-                                <TextBlock Margin="0,6,0,0" Text="{Binding PollingProfile}" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-                </TabItem>
-
-                <TabItem Header="Value Viewer">
-                    <DataGrid Margin="8"
-                              ItemsSource="{Binding ValueViewer}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              AlternatingRowBackground="#F8F8F8"
-                              SelectionUnit="FullRow"
-                              SelectionMode="Single">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="230" />
-                            <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="80" />
-                            <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="*" />
-                            <DataGridTextColumn Binding="{Binding Flags}" Header="Flags" Width="90" />
-                            <DataGridTextColumn Binding="{Binding Quality}" Header="Time Quality" Width="130" />
-                            <DataGridTextColumn Binding="{Binding SourceTimestampText}" Header="Source Timestamp" Width="190" />
-                            <DataGridTextColumn Binding="{Binding SourceReasonText}" Header="Source Reason" Width="160" />
-                            <DataGridTextColumn Binding="{Binding Source}" Header="Variation" Width="150" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </TabItem>
-
-                <TabItem Header="Point Database">
-                    <Grid Margin="8">
+        <Grid Grid.Row="1" Margin="18">
+            <TabControl x:Name="MainTabs"
+                        Loaded="MainTabs_OnLoaded"
+                        SelectionChanged="MainTabs_OnSelectionChanged"
+                        SizeChanged="MainTabs_OnSizeChanged">
+                <TabItem Header="Mission Control">
+                    <Grid Margin="0,14,0,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.15*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" Style="{StaticResource MetricPanelStyle}" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="SESSION" Style="{StaticResource EyebrowTextStyle}" />
+                                    <TextBlock Margin="0,6,0,0" FontSize="24" FontWeight="SemiBold" Text="{Binding ConnectionState}" />
+                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" Text="{Binding ConnectionDetail}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Style="{StaticResource MetricPanelStyle}" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="LIVE VALUES" Style="{StaticResource EyebrowTextStyle}" />
+                                    <TextBlock Margin="0,6,0,0" FontSize="24" FontWeight="SemiBold" Text="{Binding LiveValueCount}" />
+                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" Text="Current point cache" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Style="{StaticResource MetricPanelStyle}" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="SCADA EVENTS" Style="{StaticResource EyebrowTextStyle}" />
+                                    <TextBlock Margin="0,6,0,0" FontSize="24" FontWeight="SemiBold" Text="{Binding EventLogCount}" />
+                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" Text="Operator evidence" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="3" Style="{StaticResource MetricPanelStyle}" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="SOE RECORDS" Style="{StaticResource EyebrowTextStyle}" />
+                                    <TextBlock Margin="0,6,0,0" FontSize="24" FontWeight="SemiBold" Text="{Binding SoeAuditCount}" />
+                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" Text="Timestamp audit" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="4" Style="{StaticResource MetricPanelStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="POINT DATABASE" Style="{StaticResource EyebrowTextStyle}" />
+                                    <TextBlock Margin="0,6,0,0" FontSize="24" FontWeight="SemiBold" Text="{Binding PointCatalogCount}" />
+                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" Text="{Binding PointCatalogProfileName, Mode=OneWay}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Grid Grid.Row="1" Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="360" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="380" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" Style="{StaticResource FlatPanelStyle}" Margin="0,0,12,0">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Test Setup" Style="{StaticResource SectionTitleStyle}" />
+                                    <StackPanel Grid.Row="1" Margin="0,14,0,0">
+                                        <TextBlock Text="Analyzer Profile" Style="{StaticResource EyebrowTextStyle}" />
+                                        <ComboBox ItemsSource="{Binding PointCatalogProfiles}"
+                                                  SelectedItem="{Binding SelectedPointCatalogProfile}"
+                                                  DisplayMemberPath="Name" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Margin="0,14,0,0">
+                                        <TextBlock Text="Polling Baseline" Style="{StaticResource EyebrowTextStyle}" />
+                                        <TextBlock Margin="0,6,0,0" Text="{Binding PollingProfile}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="3" Margin="0,18,0,0">
+                                        <TextBlock Text="Current Setup" Style="{StaticResource EyebrowTextStyle}" />
+                                        <TextBlock Margin="0,8,0,0" Text="{Binding Settings.Transport, StringFormat=Transport: {0}}" />
+                                        <TextBlock Margin="0,5,0,0" Text="{Binding Settings.PollingProfile, StringFormat=Profile: {0}}" />
+                                        <TextBlock Margin="0,5,0,0" Text="{Binding SerialProfile}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Grid Grid.Column="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="1*" />
+                                    <RowDefinition Height="1*" />
+                                </Grid.RowDefinitions>
+                                <Border Style="{StaticResource FlatPanelStyle}" Margin="0,0,12,12">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Live Value Viewer" Style="{StaticResource SectionTitleStyle}" />
+                                        <DataGrid Grid.Row="1"
+                                                  Margin="0,12,0,0"
+                                                  ItemsSource="{Binding ValueViewer}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True"
+                                                  SelectionUnit="FullRow"
+                                                  SelectionMode="Single">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="220" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                                <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="70" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                                <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="*" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                                <DataGridTextColumn Binding="{Binding Flags}" Header="Flags" Width="90" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                                <DataGridTextColumn Binding="{Binding SourceReasonText}" Header="Reason" Width="140" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Row="1" Style="{StaticResource FlatPanelStyle}" Margin="0,0,12,0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Recent SCADA Events" Style="{StaticResource SectionTitleStyle}" />
+                                        <DataGrid Grid.Row="1"
+                                                  Margin="0,12,0,0"
+                                                  ItemsSource="{Binding EventLogs}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True"
+                                                  SelectionUnit="FullRow"
+                                                  SelectionMode="Single">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:HH:mm:ss.fff}}" Header="Time" Width="120" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                                <DataGridTextColumn Binding="{Binding EventType}" Header="Event" Width="150" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                                <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="220" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                                <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="110" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                                <DataGridTextColumn Binding="{Binding Detail}" Header="Detail" Width="*" ElementStyle="{StaticResource GridTextDetailStyle}" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <Border Grid.Column="2" Style="{StaticResource FlatPanelStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Command Life Tracker" Style="{StaticResource SectionTitleStyle}" />
+                                    <Grid Grid.Row="1" Margin="0,14,0,12">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding LatestTransactionId, Mode=OneWay}" FontSize="17" FontWeight="SemiBold" />
+                                        <TextBlock Grid.Column="1" Text="{Binding LatestFinalVerdict, Mode=OneWay}" FontSize="17" FontWeight="SemiBold" />
+                                        <TextBlock Grid.Row="1" Margin="0,8,12,0" Text="{Binding LatestTransactionPoint, StringFormat=Point: {0}, Mode=OneWay}" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" Text="{Binding LatestFeedbackMatch, StringFormat=Match: {0}, Mode=OneWay}" />
+                                        <TextBlock Grid.Row="2" Margin="0,6,12,0" Text="{Binding LatestAcceptanceResult, StringFormat=Acceptance: {0}, Mode=OneWay}" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,6,0,0" Text="{Binding LatestAcceptanceLatency, Mode=OneWay}" />
+                                        <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Margin="0,6,0,0" Text="{Binding LatestFeedbackResult, StringFormat=Feedback: {0}, Mode=OneWay}" TextWrapping="Wrap" />
+                                    </Grid>
+                                    <DataGrid Grid.Row="2"
+                                              ItemsSource="{Binding CommandLifecycle}"
+                                              AutoGenerateColumns="False"
+                                              IsReadOnly="True"
+                                              SelectionMode="Single"
+                                              SelectionUnit="FullRow">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:HH:mm:ss.fff}}" Header="Time" Width="110" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                            <DataGridTextColumn Binding="{Binding Stage}" Header="Stage" Width="130" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                            <DataGridTextColumn Binding="{Binding Detail}" Header="Detail" Width="*" ElementStyle="{StaticResource GridTextDetailStyle}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <Button Grid.Row="3"
+                                            Margin="0,14,0,0"
+                                            Height="38"
+                                            Style="{StaticResource PrimaryButtonStyle}"
+                                            Command="{Binding SendBinaryCommand}"
+                                            Content="Send Binary Command" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Report Workspace">
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="360" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Style="{StaticResource FlatPanelStyle}" Margin="0,0,14,0">
+                            <StackPanel>
+                                <TextBlock Text="Report Builder" Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Margin="0,10,0,0"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Live A4 report assembled from captured values, SCADA events, SOE records, command lifecycle, and protocol trace."
+                                           TextWrapping="Wrap" />
+                                <Separator Margin="0,18,0,18" />
+                                <TextBlock Text="Included Evidence" Style="{StaticResource EyebrowTextStyle}" />
+                                <TextBlock Margin="0,8,0,0" Text="{Binding EventLogCount, StringFormat=SCADA event rows: {0}}" />
+                                <TextBlock Margin="0,6,0,0" Text="{Binding SoeAuditCount, StringFormat=SOE audit rows: {0}}" />
+                                <TextBlock Margin="0,6,0,0" Text="{Binding LinkTraceCount, StringFormat=Trace rows: {0}}" />
+                                <TextBlock Margin="0,6,0,0" Text="{Binding LiveValueCount, StringFormat=Live point values: {0}}" />
+                                <Separator Margin="0,18,0,18" />
+                                <TextBlock Text="Report Data" Style="{StaticResource EyebrowTextStyle}" />
+                                <TextBlock Margin="0,8,0,0" Text="{Binding ConnectionProfile}" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,6,0,0" Text="{Binding ConnectionTarget, Mode=OneWay}" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,6,0,0" Text="{Binding PollingProfile}" TextWrapping="Wrap" />
+                                <Separator Margin="0,18,0,18" />
+                                <TextBlock Text="Next Engine Step" Style="{StaticResource EyebrowTextStyle}" />
+                                <TextBlock Margin="0,8,0,0"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="This preview is now data-backed. The next implementation step is exporting this same visual tree through FixedDocument or QuestPDF."
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                            <Grid HorizontalAlignment="Center" Margin="24">
+                                <Border Width="794"
+                                        Height="1123"
+                                        Background="{StaticResource ReportPaperBrush}"
+                                        BorderBrush="#D6DCE4"
+                                        BorderThickness="1"
+                                        Padding="56">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="24" ShadowDepth="0" Opacity="0.18" />
+                                    </Border.Effect>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding ReportTitle}" FontSize="28" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                                <TextBlock Margin="0,8,0,0" Text="{Binding ConnectionTarget, Mode=OneWay}" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="{StaticResource InkSoftBrush}" CornerRadius="4" Padding="12,8" VerticalAlignment="Top">
+                                                <TextBlock Text="A4" Foreground="White" FontWeight="SemiBold" />
+                                            </Border>
+                                        </Grid>
+
+                                        <Grid Grid.Row="1" Margin="0,34,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border BorderBrush="#DDE4EC" BorderThickness="0,0,1,0" Padding="0,0,18,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="EVENTS" Style="{StaticResource EyebrowTextStyle}" />
+                                                    <TextBlock Margin="0,6,0,0" Text="{Binding EventLogCount}" FontSize="28" FontWeight="SemiBold" />
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Grid.Column="1" BorderBrush="#DDE4EC" BorderThickness="0,0,1,0" Padding="18,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="SOE" Style="{StaticResource EyebrowTextStyle}" />
+                                                    <TextBlock Margin="0,6,0,0" Text="{Binding SoeAuditCount}" FontSize="28" FontWeight="SemiBold" />
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Grid.Column="2" Padding="18,0,0,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="TRACE" Style="{StaticResource EyebrowTextStyle}" />
+                                                    <TextBlock Margin="0,6,0,0" Text="{Binding LinkTraceCount}" FontSize="28" FontWeight="SemiBold" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+
+                                        <Border Grid.Row="2" Margin="0,34,0,0" Background="#F1F6F7" CornerRadius="6" Padding="18">
+                                            <StackPanel>
+                                                <TextBlock Text="Executive Verdict" FontSize="17" FontWeight="SemiBold" />
+                                                <TextBlock Margin="0,8,0,0" Text="{Binding LatestFinalVerdict, Mode=OneWay}" FontSize="21" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" />
+                                                <TextBlock Margin="0,8,0,0" Text="{Binding LatestFeedbackResult, Mode=OneWay}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Grid Grid.Row="3" Margin="0,28,0,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Latest SCADA Evidence" FontSize="16" FontWeight="SemiBold" />
+                                                <TextBlock Margin="0,8,0,0" Text="{Binding LatestEventSummary}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <Border Grid.Row="1" Margin="0,22,0,0" BorderBrush="#DDE4EC" BorderThickness="0,1,0,0" Padding="0,14,0,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="SCADA Event Extract" FontSize="15" FontWeight="SemiBold" />
+                                                    <Grid Margin="0,10,0,6">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="92" />
+                                                            <ColumnDefinition Width="138" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="76" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="Time" Style="{StaticResource ReportTableMutedCellStyle}" />
+                                                        <TextBlock Grid.Column="1" Text="Event" Style="{StaticResource ReportTableMutedCellStyle}" />
+                                                        <TextBlock Grid.Column="2" Text="Point" Style="{StaticResource ReportTableMutedCellStyle}" />
+                                                        <TextBlock Grid.Column="3" Text="Value" Style="{StaticResource ReportTableMutedCellStyle}" TextAlignment="Right" />
+                                                    </Grid>
+                                                    <ItemsControl ItemsSource="{Binding ReportEvents}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,0,0,5">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="92" />
+                                                                        <ColumnDefinition Width="138" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="76" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding TimestampLocal, StringFormat={}{0:HH:mm:ss.fff}}" Style="{StaticResource ReportTableCellStyle}" />
+                                                                    <TextBlock Grid.Column="1" Text="{Binding EventType}" Style="{StaticResource ReportTableCellStyle}" />
+                                                                    <TextBlock Grid.Column="2" Text="{Binding PointLabel}" Style="{StaticResource ReportTableCellStyle}" />
+                                                                    <TextBlock Grid.Column="3" Text="{Binding Value}" Style="{StaticResource ReportTableCellStyle}" TextAlignment="Right" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Grid.Row="2" Margin="0,18,0,0" BorderBrush="#DDE4EC" BorderThickness="0,1,0,0" Padding="0,14,0,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="SOE Timestamp Extract" FontSize="15" FontWeight="SemiBold" />
+                                                    <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding ReportSoeEvents}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,0,0,5">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="132" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="76" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding SourceTimestampText}" Style="{StaticResource ReportTableMutedCellStyle}" />
+                                                                    <TextBlock Grid.Column="1" Text="{Binding PointLabel}" Style="{StaticResource ReportTableCellStyle}" />
+                                                                    <TextBlock Grid.Column="2" Text="{Binding Value}" Style="{StaticResource ReportTableCellStyle}" TextAlignment="Right" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Grid.Row="3" Margin="0,18,0,0" BorderBrush="#DDE4EC" BorderThickness="0,1,0,0" Padding="0,14,0,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="Protocol Trace Extract" FontSize="15" FontWeight="SemiBold" />
+                                                    <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding ReportTraceEntries}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,0,0,5">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="92" />
+                                                                        <ColumnDefinition Width="88" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding TimestampLocal, StringFormat={}{0:HH:mm:ss.fff}}" Style="{StaticResource ReportTableMutedCellStyle}" />
+                                                                    <TextBlock Grid.Column="1" Text="{Binding Level}" Style="{StaticResource ReportTableCellStyle}" />
+                                                                    <TextBlock Grid.Column="2" Text="{Binding Summary}" Style="{StaticResource ReportTableCellStyle}" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+
+                                        <Grid Grid.Row="4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding PointCatalogProfileName, Mode=OneWay}" Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding ReportGeneratedAt}" Foreground="{StaticResource TextMutedBrush}" />
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Value Viewer">
+                    <DataGrid Margin="0,14,0,0"
+                              ItemsSource="{Binding ValueViewer}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              SelectionUnit="FullRow"
+                              SelectionMode="Single">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="230" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                            <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="80" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="*" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Flags}" Header="Flags" Width="90" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Quality}" Header="Time Quality" Width="130" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding SourceTimestampText}" Header="Source Timestamp" Width="190" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding SourceReasonText}" Header="Source Reason" Width="160" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                            <DataGridTextColumn Binding="{Binding Source}" Header="Variation" Width="150" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+                <TabItem Header="Point Database">
+                    <Grid Margin="0,14,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Style="{StaticResource FlatPanelStyle}" Margin="0,0,0,12">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="280" />
@@ -243,44 +582,22 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                    <TextBlock Text="Database Profile" />
-                                    <ComboBox Margin="0,6,0,0"
-                                              ItemsSource="{Binding PointCatalogProfiles}"
+                                    <TextBlock Text="Database Profile" Style="{StaticResource EyebrowTextStyle}" />
+                                    <ComboBox ItemsSource="{Binding PointCatalogProfiles}"
                                               SelectedItem="{Binding SelectedPointCatalogProfile}"
                                               DisplayMemberPath="Name" />
                                 </StackPanel>
 
                                 <TextBlock Grid.Column="1"
-                                           Margin="0,24,12,0"
+                                           Margin="0,22,12,0"
                                            VerticalAlignment="Center"
                                            Foreground="{StaticResource TextMutedBrush}"
-                                           Text="Use `default.json` for debugging and `ElectraNet.json` for real FAT metadata." />
+                                           Text="Use default.json for debugging and ElectraNet.json for FAT metadata." />
 
-                                <Button Grid.Column="2"
-                                        Width="96"
-                                        Height="32"
-                                        Margin="0,22,8,0"
-                                        Command="{Binding AddPointCatalogEntryCommand}"
-                                        Content="Add Row" />
-                                <Button Grid.Column="3"
-                                        Width="108"
-                                        Height="32"
-                                        Margin="0,22,8,0"
-                                        Command="{Binding RemovePointCatalogEntryCommand}"
-                                        Content="Delete Row" />
-                                <Button Grid.Column="4"
-                                        Width="96"
-                                        Height="32"
-                                        Margin="0,22,8,0"
-                                        Command="{Binding ReloadPointCatalogProfileCommand}"
-                                        Content="Reload" />
-                                <Button Grid.Column="5"
-                                        Width="96"
-                                        Height="32"
-                                        Margin="0,22,0,0"
-                                        Style="{StaticResource PrimaryButtonStyle}"
-                                        Command="{Binding SavePointCatalogProfileCommand}"
-                                        Content="Save" />
+                                <Button Grid.Column="2" Width="96" Height="34" Margin="0,22,8,0" Command="{Binding AddPointCatalogEntryCommand}" Content="Add Row" />
+                                <Button Grid.Column="3" Width="108" Height="34" Margin="0,22,8,0" Command="{Binding RemovePointCatalogEntryCommand}" Content="Delete Row" />
+                                <Button Grid.Column="4" Width="96" Height="34" Margin="0,22,8,0" Command="{Binding ReloadPointCatalogProfileCommand}" Content="Reload" />
+                                <Button Grid.Column="5" Width="96" Height="34" Margin="0,22,0,0" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SavePointCatalogProfileCommand}" Content="Save" />
                             </Grid>
                         </Border>
 
@@ -289,276 +606,143 @@
                                   SelectedItem="{Binding SelectedPointCatalogEntry}"
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="False"
-                                  AlternatingRowBackground="#F8F8F8"
                                   SelectionMode="Single"
                                   SelectionUnit="FullRow">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="70" />
-                                <DataGridComboBoxColumn Header="Point Type"
-                                                        Width="140"
-                                                        ItemsSource="{Binding DataContext.PointTypeOptions, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        SelectedItemBinding="{Binding PointType}" />
-                                <DataGridTextColumn Binding="{Binding ObjectVariation}" Header="Obj/Var" Width="90" />
-                                <DataGridTextColumn Binding="{Binding DisplayName}" Header="Display Name" Width="240" />
-                                <DataGridTextColumn Binding="{Binding ScadaTag}" Header="SCADA Tag" Width="160" />
-                                <DataGridTextColumn Binding="{Binding EngineeringRef}" Header="Engineering Ref" Width="180" />
-                                <DataGridTextColumn Binding="{Binding DeviceRef}" Header="Device Ref" Width="110" />
-                                <DataGridTextColumn Binding="{Binding StateTextOff}" Header="State Off" Width="100" />
-                                <DataGridTextColumn Binding="{Binding StateTextOn}" Header="State On" Width="100" />
-                                <DataGridTextColumn Binding="{Binding IedModel}" Header="IED Model" Width="110" />
-                                <DataGridTextColumn Binding="{Binding DrawingRef}" Header="Drawing Ref" Width="90" />
-                                <DataGridTextColumn Binding="{Binding DnpClass}" Header="Class" Width="70" />
-                                <DataGridTextColumn Binding="{Binding DataConcentratorUnit}" Header="DC Unit" Width="80" />
-                                <DataGridTextColumn Binding="{Binding IoRef}" Header="IO Ref" Width="120" />
+                                <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="70" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridComboBoxColumn Header="Point Type" Width="140" ItemsSource="{Binding DataContext.PointTypeOptions, RelativeSource={RelativeSource AncestorType=Window}}" SelectedItemBinding="{Binding PointType}" />
+                                <DataGridTextColumn Binding="{Binding ObjectVariation}" Header="Obj/Var" Width="90" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridTextColumn Binding="{Binding DisplayName}" Header="Display Name" Width="240" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                <DataGridTextColumn Binding="{Binding ScadaTag}" Header="SCADA Tag" Width="160" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                <DataGridTextColumn Binding="{Binding EngineeringRef}" Header="Engineering Ref" Width="180" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                <DataGridTextColumn Binding="{Binding DeviceRef}" Header="Device Ref" Width="110" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridTextColumn Binding="{Binding StateTextOff}" Header="State Off" Width="100" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridTextColumn Binding="{Binding StateTextOn}" Header="State On" Width="100" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridTextColumn Binding="{Binding IedModel}" Header="IED Model" Width="110" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridTextColumn Binding="{Binding DrawingRef}" Header="Drawing Ref" Width="90" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridTextColumn Binding="{Binding DnpClass}" Header="Class" Width="70" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridTextColumn Binding="{Binding DataConcentratorUnit}" Header="DC Unit" Width="80" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridTextColumn Binding="{Binding IoRef}" Header="IO Ref" Width="120" ElementStyle="{StaticResource GridTextCenterStyle}" />
                                 <DataGridCheckBoxColumn Binding="{Binding FeedbackMappingEnabled}" Header="Use Fb" Width="70" />
-                                <DataGridTextColumn Binding="{Binding FeedbackControl}" Header="Feedback Control" Width="240" IsReadOnly="True" />
-                                <DataGridTextColumn Binding="{Binding FeedbackIndex}" Header="Fb Idx" Width="70" />
-                                <DataGridComboBoxColumn Header="Fb Type"
-                                                        Width="130"
-                                                        ItemsSource="{Binding DataContext.PointTypeOptions, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        SelectedItemBinding="{Binding FeedbackPointType}" />
-                                <DataGridTextColumn Binding="{Binding FeedbackDisplayName}" Header="Feedback Name" Width="220" />
-                                <DataGridTextColumn Binding="{Binding DefaultCommandMode}" Header="Default Mode" Width="120" />
-                                <DataGridTextColumn Binding="{Binding TimeoutMs}" Header="Timeout ms" Width="90" />
+                                <DataGridTextColumn Binding="{Binding FeedbackControl}" Header="Feedback Control" Width="240" IsReadOnly="True" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                <DataGridTextColumn Binding="{Binding FeedbackIndex}" Header="Fb Idx" Width="70" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridComboBoxColumn Header="Fb Type" Width="130" ItemsSource="{Binding DataContext.PointTypeOptions, RelativeSource={RelativeSource AncestorType=Window}}" SelectedItemBinding="{Binding FeedbackPointType}" />
+                                <DataGridTextColumn Binding="{Binding FeedbackDisplayName}" Header="Feedback Name" Width="220" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                <DataGridTextColumn Binding="{Binding DefaultCommandMode}" Header="Default Mode" Width="120" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                <DataGridTextColumn Binding="{Binding TimeoutMs}" Header="Timeout ms" Width="90" ElementStyle="{StaticResource GridTextRightStyle}" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
                 </TabItem>
 
                 <TabItem Header="Command Testing">
-                    <Grid Margin="8">
+                    <Grid Margin="0,14,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="420" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,12,0">
+                        <Border Grid.Column="0" Style="{StaticResource FlatPanelStyle}" Margin="0,0,12,0">
                             <StackPanel>
-                                <TextBlock Text="Binary Control Workflow" FontSize="16" FontWeight="SemiBold" />
-                                <TextBlock Margin="0,8,0,0"
-                                           Foreground="{StaticResource TextMutedBrush}"
-                                           Text="Issue a binary output command and compare request evidence with later command-event or status feedback."
-                                           TextWrapping="Wrap" />
+                                <TextBlock Text="Binary Control Workflow" Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextMutedBrush}" Text="Issue a binary output command and compare request evidence with later command-event or status feedback." TextWrapping="Wrap" />
 
                                 <StackPanel Margin="0,16,0,0">
-                                    <TextBlock Text="Point Index" />
+                                    <TextBlock Text="Point Index" Style="{StaticResource EyebrowTextStyle}" />
                                     <TextBox Text="{Binding CommandPointIndex, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <StackPanel Margin="0,12,0,0">
-                                    <TextBlock Text="Command Mode" />
-                                    <ComboBox ItemsSource="{Binding CommandModes}"
-                                              SelectedItem="{Binding SelectedCommandMode}" />
+                                    <TextBlock Text="Command Mode" Style="{StaticResource EyebrowTextStyle}" />
+                                    <ComboBox ItemsSource="{Binding CommandModes}" SelectedItem="{Binding SelectedCommandMode}" />
                                 </StackPanel>
 
                                 <StackPanel Margin="0,12,0,0">
-                                    <TextBlock Text="Binary Operation" />
-                                    <ComboBox ItemsSource="{Binding BinaryOperations}"
-                                              SelectedItem="{Binding SelectedBinaryOperation}" />
+                                    <TextBlock Text="Binary Operation" Style="{StaticResource EyebrowTextStyle}" />
+                                    <ComboBox ItemsSource="{Binding BinaryOperations}" SelectedItem="{Binding SelectedBinaryOperation}" />
                                 </StackPanel>
 
-                                <Button Margin="0,18,0,0"
-                                        Height="36"
-                                        Style="{StaticResource PrimaryButtonStyle}"
-                                        Command="{Binding SendBinaryCommand}"
-                                        Content="Send Binary Command" />
+                                <Button Margin="0,18,0,0" Height="38" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SendBinaryCommand}" Content="Send Binary Command" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16">
+                        <Border Grid.Column="1" Style="{StaticResource FlatPanelStyle}">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-
-                                <TextBlock Text="Command Life Tracker" FontSize="16" FontWeight="SemiBold" />
-
-                                <Grid Grid.Row="1" Margin="0,12,0,14">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding LatestTransactionId, Mode=OneWay}" FontSize="18" FontWeight="SemiBold" />
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding LatestFinalVerdict, Mode=OneWay}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Right" />
-
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,8,12,0">
-                                        <Run Text="Point: " />
-                                        <Run Text="{Binding LatestTransactionPoint, Mode=OneWay}" />
-                                    </TextBlock>
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" HorizontalAlignment="Right">
-                                        <Run Text="Feedback Match: " />
-                                        <Run Text="{Binding LatestFeedbackMatch, Mode=OneWay}" />
-                                    </TextBlock>
-
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,6,12,0">
-                                        <Run Text="Prepared: " />
-                                        <Run Text="{Binding LatestPreparedAt, Mode=OneWay}" />
-                                    </TextBlock>
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,6,0,0" HorizontalAlignment="Right">
-                                        <Run Text="Requested: " />
-                                        <Run Text="{Binding LatestRequestedAt, Mode=OneWay}" />
-                                    </TextBlock>
-
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,6,12,0">
-                                        <Run Text="Acceptance: " />
-                                        <Run Text="{Binding LatestAcceptanceResult, Mode=OneWay}" />
-                                    </TextBlock>
-                                    <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,6,0,0" HorizontalAlignment="Right">
-                                        <Run Text="Accepted At: " />
-                                        <Run Text="{Binding LatestAcceptanceAt, Mode=OneWay}" />
-                                    </TextBlock>
-
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Margin="0,6,12,0">
-                                        <Run Text="Feedback: " />
-                                        <Run Text="{Binding LatestFeedbackResult, Mode=OneWay}" />
-                                    </TextBlock>
-                                    <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,6,0,0" HorizontalAlignment="Right">
-                                        <Run Text="Evidence: " />
-                                        <Run Text="{Binding LatestFeedbackEvidence, Mode=OneWay}" />
-                                    </TextBlock>
-
-                                    <TextBlock Grid.Row="5" Grid.Column="0" Margin="0,6,12,0">
-                                        <Run Text="Feedback At: " />
-                                        <Run Text="{Binding LatestFeedbackAt, Mode=OneWay}" />
-                                    </TextBlock>
-                                    <TextBlock Grid.Row="5" Grid.Column="1" Margin="0,6,0,0" HorizontalAlignment="Right">
-                                        <Run Text="Acceptance Latency: " />
-                                        <Run Text="{Binding LatestAcceptanceLatency, Mode=OneWay}" />
-                                    </TextBlock>
-
-                                    <TextBlock Grid.Row="6" Grid.Column="0" Margin="0,6,12,0">
-                                        <Run Text="Channel: " />
-                                        <Run Text="{Binding ConnectionTarget, Mode=OneWay}" />
-                                    </TextBlock>
-                                    <TextBlock Grid.Row="6" Grid.Column="1" Margin="0,6,0,0" HorizontalAlignment="Right">
-                                        <Run Text="Feedback Latency: " />
-                                        <Run Text="{Binding LatestFeedbackLatency, Mode=OneWay}" />
-                                    </TextBlock>
-                                </Grid>
-
-                                <DataGrid Grid.Row="2"
+                                <TextBlock Text="Command Lifecycle Evidence" Style="{StaticResource SectionTitleStyle}" />
+                                <DataGrid Grid.Row="1"
+                                          Margin="0,12,0,0"
                                           ItemsSource="{Binding CommandLifecycle}"
                                           AutoGenerateColumns="False"
                                           IsReadOnly="True"
-                                          AlternatingRowBackground="#F8F8F8"
                                           HeadersVisibility="Column"
                                           SelectionMode="Single"
                                           SelectionUnit="FullRow">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:HH:mm:ss.fff}}" Header="Time" Width="130" />
-                                        <DataGridTextColumn Binding="{Binding Stage}" Header="Stage" Width="180" />
-                                        <DataGridTextColumn Binding="{Binding Detail}" Header="Detail" Width="*" />
+                                        <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:HH:mm:ss.fff}}" Header="Time" Width="130" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                                        <DataGridTextColumn Binding="{Binding Stage}" Header="Stage" Width="180" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                                        <DataGridTextColumn Binding="{Binding Detail}" Header="Detail" Width="*" ElementStyle="{StaticResource GridTextDetailStyle}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
-
-                                <Border Grid.Row="3"
-                                        Margin="0,14,0,0"
-                                        Style="{StaticResource CardBorderStyle}"
-                                        Padding="12">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel>
-                                            <TextBlock Text="Command Audit Verdict" FontWeight="SemiBold" />
-                                            <TextBlock Margin="0,6,0,0" Text="{Binding LatestFinalVerdict, Mode=OneWay}" />
-                                            <TextBlock Margin="0,4,0,0" Foreground="{StaticResource TextMutedBrush}" Text="{Binding LatestFeedbackResult, Mode=OneWay}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                        <TextBlock Grid.Column="1"
-                                                   VerticalAlignment="Center"
-                                                   FontSize="16"
-                                                   FontWeight="SemiBold"
-                                                   Text="{Binding LatestFeedbackLatency, Mode=OneWay}" />
-                                    </Grid>
-                                </Border>
                             </Grid>
                         </Border>
                     </Grid>
                 </TabItem>
 
                 <TabItem Header="SCADA Events">
-                    <DataGrid Margin="8"
-                              ItemsSource="{Binding EventLogs}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              AlternatingRowBackground="#F8F8F8"
-                              SelectionUnit="FullRow"
-                              SelectionMode="Single">
+                    <DataGrid Margin="0,14,0,0" ItemsSource="{Binding EventLogs}" AutoGenerateColumns="False" IsReadOnly="True" SelectionUnit="FullRow" SelectionMode="Single">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}" Header="Logged At" Width="190" />
-                            <DataGridTextColumn Binding="{Binding EventType}" Header="Event Type" Width="170" />
-                            <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="230" />
-                            <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="70" />
-                            <DataGridTextColumn Binding="{Binding PreviousValue}" Header="Previous" Width="100" />
-                            <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="100" />
-                            <DataGridTextColumn Binding="{Binding Status}" Header="Status / Flags" Width="120" />
-                            <DataGridTextColumn Binding="{Binding Quality}" Header="Quality" Width="120" />
-                            <DataGridTextColumn Binding="{Binding SourceReasonText}" Header="Source Reason" Width="160" />
-                            <DataGridTextColumn Binding="{Binding Detail}" Header="Operator Detail" Width="*" />
+                            <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}" Header="Logged At" Width="190" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding EventType}" Header="Event Type" Width="170" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                            <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="230" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                            <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="70" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding PreviousValue}" Header="Previous" Width="100" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="100" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Status}" Header="Status / Flags" Width="120" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Quality}" Header="Quality" Width="120" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding SourceReasonText}" Header="Source Reason" Width="160" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                            <DataGridTextColumn Binding="{Binding Detail}" Header="Operator Detail" Width="*" ElementStyle="{StaticResource GridTextDetailStyle}" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>
 
                 <TabItem Header="SOE Audit">
-                    <DataGrid Margin="8"
-                              ItemsSource="{Binding SoeAudit}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              AlternatingRowBackground="#F8F8F8"
-                              SelectionUnit="FullRow"
-                              SelectionMode="Single">
+                    <DataGrid Margin="0,14,0,0" ItemsSource="{Binding SoeAudit}" AutoGenerateColumns="False" IsReadOnly="True" SelectionUnit="FullRow" SelectionMode="Single">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding ReceivedAtLocal, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}" Header="Captured At" Width="190" />
-                            <DataGridTextColumn Binding="{Binding SourceTimestampText}" Header="Source Timestamp" Width="190" />
-                            <DataGridTextColumn Binding="{Binding ReadType}" Header="Read Type" Width="120" />
-                            <DataGridTextColumn Binding="{Binding EventClass}" Header="Class" Width="100" />
-                            <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="230" />
-                            <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="70" />
-                            <DataGridTextColumn Binding="{Binding PreviousValue}" Header="Previous" Width="110" />
-                            <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="120" />
-                            <DataGridTextColumn Binding="{Binding Status}" Header="Status" Width="110" />
-                            <DataGridTextColumn Binding="{Binding Flags}" Header="Flags" Width="110" />
-                            <DataGridTextColumn Binding="{Binding Quality}" Header="Time Quality" Width="120" />
-                            <DataGridTextColumn Binding="{Binding Variation}" Header="Variation" Width="130" />
-                            <DataGridTextColumn Binding="{Binding Qualifier}" Header="Qualifier" Width="120" />
+                            <DataGridTextColumn Binding="{Binding ReceivedAtLocal, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}" Header="Captured At" Width="190" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding SourceTimestampText}" Header="Source Timestamp" Width="190" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding ReadType}" Header="Read Type" Width="120" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding EventClass}" Header="Class" Width="100" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding PointLabel}" Header="Point" Width="230" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                            <DataGridTextColumn Binding="{Binding Index}" Header="Index" Width="70" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding PreviousValue}" Header="Previous" Width="110" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Value}" Header="Value" Width="120" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Status}" Header="Status" Width="110" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Flags}" Header="Flags" Width="110" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Quality}" Header="Time Quality" Width="120" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Variation}" Header="Variation" Width="130" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                            <DataGridTextColumn Binding="{Binding Qualifier}" Header="Qualifier" Width="120" ElementStyle="{StaticResource GridTextLeftStyle}" />
                             <DataGridCheckBoxColumn Binding="{Binding IsBroadcast}" Header="Broadcast" Width="90" />
-                            <DataGridTextColumn Binding="{Binding SourceReasonText}" Header="Source Reason" Width="160" />
-                            <DataGridTextColumn Binding="{Binding Notes}" Header="Notes" Width="*" />
+                            <DataGridTextColumn Binding="{Binding SourceReasonText}" Header="Source Reason" Width="160" ElementStyle="{StaticResource GridTextLeftStyle}" />
+                            <DataGridTextColumn Binding="{Binding Notes}" Header="Notes" Width="*" ElementStyle="{StaticResource GridTextDetailStyle}" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>
 
                 <TabItem Header="Link Trace">
-                    <DataGrid Margin="8"
-                              ItemsSource="{Binding LinkTrace}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              AlternatingRowBackground="#F8F8F8"
-                              SelectionUnit="FullRow"
-                              SelectionMode="Single">
+                    <DataGrid Margin="0,14,0,0" ItemsSource="{Binding LinkTrace}" AutoGenerateColumns="False" IsReadOnly="True" SelectionUnit="FullRow" SelectionMode="Single">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}" Header="Timestamp" Width="190" />
-                            <DataGridTextColumn Binding="{Binding Direction}" Header="Channel" Width="110" />
-                            <DataGridTextColumn Binding="{Binding Level}" Header="Level" Width="110" />
-                            <DataGridTextColumn Binding="{Binding Summary}" Header="Trace Detail" Width="*" />
+                            <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}" Header="Timestamp" Width="190" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Direction}" Header="Channel" Width="110" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Level}" Header="Level" Width="110" ElementStyle="{StaticResource GridTextCenterStyle}" />
+                            <DataGridTextColumn Binding="{Binding Summary}" Header="Trace Detail" Width="*" ElementStyle="{StaticResource GridTextDetailStyle}" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>
             </TabControl>
-        </Border>
+        </Grid>
     </Grid>
 </Window>
