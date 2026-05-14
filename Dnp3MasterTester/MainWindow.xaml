@@ -284,6 +284,12 @@
                             <Path Style="{StaticResource ToolbarIconPathStyle}"
                                   Data="M12 2 V6 M12 18 V22 M2 12 H6 M18 12 H22 M12 16 A4 4 0 1 0 12 8 A4 4 0 0 0 12 16 Z" />
                         </Button>
+                        <Button Style="{StaticResource ToolbarButtonStyle}"
+                                Click="OpenAbout_Click"
+                                ToolTip="About">
+                            <Path Style="{StaticResource ToolbarIconPathStyle}"
+                                  Data="M12 17 H12.01 M12 14 V13 C12 11.9 12.9 11.35 13.7 10.8 C14.45 10.28 15 9.84 15 9 A3 3 0 0 0 9 9 M12 22 A10 10 0 1 0 12 2 A10 10 0 0 0 12 22 Z" />
+                        </Button>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -1349,6 +1355,89 @@
                             <DataGridTextColumn Binding="{Binding Summary}" Header="Trace Detail" Width="*" ElementStyle="{StaticResource GridTextDetailStyle}" />
                         </DataGrid.Columns>
                     </DataGrid>
+                </TabItem>
+
+                <TabItem x:Name="AboutTab" Header="About">
+                    <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
+                        <StackPanel MaxWidth="920" HorizontalAlignment="Center">
+                            <Border Style="{StaticResource FlatPanelStyle}" Padding="28">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="72"
+                                                Height="72"
+                                                CornerRadius="12"
+                                                Background="White"
+                                                BorderBrush="{StaticResource CardBorderBrush}"
+                                                BorderThickness="1"
+                                                Padding="7"
+                                                Margin="0,0,18,0">
+                                            <Image Source="Assets/dnp-tester-icon.png"
+                                                   Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <StackPanel>
+                                            <TextBlock Text="DNP3 Interoperability Tester"
+                                                       FontSize="24"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                                            <TextBlock Margin="0,6,0,0"
+                                                       Text="FAT evidence workspace for DNP3 testing, reporting, and protocol audit."
+                                                       Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBlock Margin="0,8,0,0"
+                                                       Text="Created and maintained by MasArray"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{StaticResource AccentBrush}" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <Separator Margin="0,24,0,22" />
+
+                                    <TextBlock Text="Open Source Notice" Style="{StaticResource SectionTitleStyle}" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Text="The application source code can be published under the repository license. Third-party protocol libraries remain governed by their own license terms and are not relicensed by this application."
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               TextWrapping="Wrap" />
+
+                                    <TextBlock Margin="0,20,0,0" Text="Third-party DNP3 Engine" Style="{StaticResource SectionTitleStyle}" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Text="DNP3 protocol functionality is provided by the Step Function I/O dnp3 package. Its package license is a separate non-commercial/non-production license unless a commercial license has been obtained from Step Function I/O."
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               TextWrapping="Wrap" />
+
+                                    <Border Margin="0,18,0,0"
+                                            Background="#F8FBFC"
+                                            BorderBrush="#DDE4EC"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="16">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="190" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="Author / maintainer" FontWeight="SemiBold" />
+                                            <TextBlock Grid.Column="1" Text="MasArray" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="1" Margin="0,10,0,0" Text="Application license" FontWeight="SemiBold" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" Text="MIT for this application's own source code, excluding third-party dependencies." TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="2" Margin="0,10,0,0" Text="DNP3 dependency" FontWeight="SemiBold" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,10,0,0" Text="Step Function I/O dnp3 1.7.0-RC1" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="3" Margin="0,10,0,0" Text="Distribution note" FontWeight="SemiBold" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,10,0,0" Text="Do not treat the DNP3 library as MIT/open-source. Verify commercial/production rights before distributing a production installer." TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="4" Margin="0,10,0,0" Text="Local notices" FontWeight="SemiBold" />
+                                            <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,10,0,0" Text="See LICENSE and THIRD-PARTY-NOTICES.md in the repository/build output." TextWrapping="Wrap" />
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
             </TabControl>
         </Grid>

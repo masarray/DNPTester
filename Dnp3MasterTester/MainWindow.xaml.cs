@@ -51,6 +51,11 @@ public partial class MainWindow : Window
         dialog.ShowDialog();
     }
 
+    private void OpenAbout_Click(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedItem = AboutTab;
+    }
+
     private void MainTabs_OnLoaded(object sender, RoutedEventArgs e)
     {
         Dispatcher.BeginInvoke(UpdateSegmentIndicator, DispatcherPriority.Loaded);

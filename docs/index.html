@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DNP3 Interoperability Tester</title>
+    <meta
+      name="description"
+      content="A DNP3 FAT and interoperability evidence workspace for commissioning engineers."
+    />
+    <link rel="icon" href="assets/dnp-tester-icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="DNP3 Interoperability Tester">
+        <img src="assets/dnp-tester-icon.png" alt="" />
+        <span>
+          <strong>DNP3 Interoperability Tester</strong>
+          <small>FAT evidence workspace</small>
+        </span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#workflow">Workflow</a>
+        <a href="#reporting">Reporting</a>
+        <a href="#compliance">Compliance</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">SCADA commissioning evidence</p>
+          <h1>DNP3 FAT reports that explain what was actually tested.</h1>
+          <p class="lead">
+            A focused desktop tester for DNP3 master workflows, point evidence,
+            SOE context, command lifecycle checks, and professional FAT report
+            export.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#workflow">View workflow</a>
+            <a class="button secondary" href="#compliance">License notes</a>
+          </div>
+        </div>
+        <aside class="hero-panel" aria-label="Product summary">
+          <img class="product-logo" src="assets/dnp-tester-logo.png" alt="DNP3 Tester logo" />
+          <div class="status-grid">
+            <div>
+              <span>Evidence</span>
+              <strong>Frozen snapshots</strong>
+            </div>
+            <div>
+              <span>Export</span>
+              <strong>QuestPDF</strong>
+            </div>
+            <div>
+              <span>Workflow</span>
+              <strong>Guided FAT</strong>
+            </div>
+            <div>
+              <span>Target</span>
+              <strong>Windows desktop</strong>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="section" id="workflow">
+        <div class="section-heading">
+          <p class="eyebrow">Guided workflow</p>
+          <h2>Built around the commissioning engineer, not a raw log dump.</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="card-number">01</span>
+            <h3>Report identity first</h3>
+            <p>
+              Capture project, customer, approver, footer, and logo details
+              before the report preview is generated.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="card-number">02</span>
+            <h3>Evidence recognition</h3>
+            <p>
+              Bind communication, value viewer, SOE, command, and recovery
+              evidence into clear FAT item results.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="card-number">03</span>
+            <h3>Operator verification</h3>
+            <p>
+              Let the user confirm binary and analog mapping correctness with
+              remarks when field naming or mapping needs review.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="card-number">04</span>
+            <h3>Automated checks</h3>
+            <p>
+              Run command sequence, non-operation guard, and recovery evidence
+              capture as guided workflow steps.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section split" id="reporting">
+        <div>
+          <p class="eyebrow">Report engine</p>
+          <h2>Preview follows the same PDF path used for export.</h2>
+          <p>
+            The report workspace renders frozen evidence snapshots through the
+            QuestPDF export path, then displays the resulting PDF preview. This
+            keeps preview and exported output aligned.
+          </p>
+        </div>
+        <div class="report-list" aria-label="Report capabilities">
+          <div><strong>FAT matrix</strong><span>Objective, evidence, recognition rule, verdict.</span></div>
+          <div><strong>Technical result</strong><span>Separates test completion from protocol failure.</span></div>
+          <div><strong>Timestamp quality</strong><span>Tracks source timestamp basis for SCADA events.</span></div>
+          <div><strong>Command lifecycle</strong><span>Prepared, requested, accepted, feedback, final state.</span></div>
+        </div>
+      </section>
+
+      <section class="section compliance" id="compliance">
+        <div>
+          <p class="eyebrow">Open source readiness</p>
+          <h2>Application source and third-party protocol stack are documented separately.</h2>
+          <p>
+            The application can be published with its own open-source license,
+            but third-party dependencies remain governed by their own licenses.
+            In particular, the Step Function I/O DNP3 library must be reviewed
+            separately before any commercial or production use.
+          </p>
+        </div>
+        <div class="notice">
+          <strong>Repository files to review</strong>
+          <span>LICENSE</span>
+          <span>THIRD-PARTY-NOTICES.md</span>
+          <span>Dnp3MasterTester/README.md</span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>DNP3 Interoperability Tester</span>
+      <span>Professional FAT evidence for DNP3 commissioning workflows.</span>
+    </footer>
+  </body>
+</html>
