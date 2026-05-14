@@ -3,6 +3,10 @@
 Professional DNP3 master-side test workspace for IED commissioning, SCADA
 signal troubleshooting, FAT evidence collection, and interoperability testing.
 
+Created by **MasArray** as a portfolio-grade engineering tool for protocol
+communication testing, SCADA integration learning, and practical DNP3 test bench
+workflows.
+
 ![Mission Control](Dnp3MasterTester/Assets/screenshot/web/mission-control.png)
 
 ## Why this exists
@@ -117,6 +121,13 @@ dotnet build DNPTester.slnx
 
 The static product landing page lives in [docs](docs). Use GitHub Pages with
 `Source: GitHub Actions`, then run the `Deploy GitHub Pages` workflow.
+
+## Download
+
+Windows installers are published through GitHub Releases:
+
+- [Latest release](https://github.com/masarray/DNPTester/releases/latest)
+- [All releases](https://github.com/masarray/DNPTester/releases)
 
 ## Compliance note
 

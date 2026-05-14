@@ -3,13 +3,77 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DNP3 Interoperability Tester</title>
+    <title>DNP3 Protocol Tester for IED, SCADA FAT, Communication Troubleshooting | MasArray</title>
     <meta
       name="description"
-      content="A professional DNP3 FAT, SCADA troubleshooting, and interoperability evidence workspace for Windows."
+      content="MasArray DNP3 Interoperability Tester is Windows software for IED testing, SCADA communication troubleshooting, DNP3 protocol learning, FAT evidence reports, command testing, SOE audit, and interoperability checks."
     />
+    <meta name="author" content="MasArray" />
+    <meta name="creator" content="MasArray" />
+    <meta name="publisher" content="MasArray" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#0c7280" />
+    <meta name="application-name" content="DNP3 Interoperability Tester" />
+    <link rel="canonical" href="https://masarray.github.io/DNPTester/" />
     <link rel="icon" href="assets/dnp-tester-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="MasArray DNPTester" />
+    <meta property="og:title" content="DNP3 Interoperability Tester by MasArray" />
+    <meta property="og:description" content="Windows DNP3 protocol tester for IED, SCADA troubleshooting, FAT evidence reports, command lifecycle checks, SOE audit, and interoperability testing." />
+    <meta property="og:url" content="https://masarray.github.io/DNPTester/" />
+    <meta property="og:image" content="https://masarray.github.io/DNPTester/assets/screenshots/mission-control.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DNP3 Interoperability Tester by MasArray" />
+    <meta name="twitter:description" content="IED testing, SCADA communication troubleshooting, DNP3 FAT evidence, and protocol learning software for Windows." />
+    <meta name="twitter:image" content="https://masarray.github.io/DNPTester/assets/screenshots/mission-control.png" />
     <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "DNP3 Interoperability Tester",
+        "alternateName": "MasArray DNPTester",
+        "description": "Windows DNP3 protocol tester for IED communication checks, SCADA troubleshooting, FAT evidence reporting, command lifecycle testing, SOE audit, and interoperability validation.",
+        "url": "https://masarray.github.io/DNPTester/",
+        "codeRepository": "https://github.com/masarray/DNPTester",
+        "downloadUrl": "https://github.com/masarray/DNPTester/releases/latest",
+        "operatingSystem": "Windows",
+        "applicationCategory": "DeveloperApplication",
+        "softwareVersion": "1.0.0",
+        "license": "https://github.com/masarray/DNPTester/blob/master/LICENSE",
+        "author": {
+          "@type": "Organization",
+          "name": "MasArray",
+          "url": "https://github.com/masarray"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "MasArray",
+          "url": "https://github.com/masarray"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "url": "https://github.com/masarray/DNPTester/releases/latest"
+        },
+        "screenshot": [
+          "https://masarray.github.io/DNPTester/assets/screenshots/mission-control.png",
+          "https://masarray.github.io/DNPTester/assets/screenshots/report-preview.png",
+          "https://masarray.github.io/DNPTester/assets/screenshots/scada-events.png",
+          "https://masarray.github.io/DNPTester/assets/screenshots/soe-audit.png"
+        ],
+        "keywords": [
+          "DNP3 protocol tester",
+          "SCADA troubleshooting software",
+          "IED communication tester",
+          "DNP3 FAT report",
+          "protocol communication test",
+          "data communication protocol learning"
+        ]
+      }
+    </script>
   </head>
   <body>
     <div class="ambient-grid" aria-hidden="true"></div>
@@ -18,13 +82,14 @@
         <img src="assets/dnp-tester-icon.png" alt="" />
         <span>
           <strong>DNP3 Interoperability Tester</strong>
-          <small>SCADA FAT evidence workspace</small>
+          <small>by MasArray</small>
         </span>
       </a>
       <nav class="nav-links" aria-label="Main navigation">
         <a href="#use-cases">Use cases</a>
         <a href="#screens">Screens</a>
         <a href="#evidence">Evidence</a>
+        <a href="#download">Download</a>
         <a href="#compliance">Compliance</a>
       </nav>
     </header>
@@ -32,7 +97,7 @@
     <main id="top">
       <section class="hero">
         <div class="hero-copy reveal">
-          <p class="eyebrow">DNP3 commissioning, FAT, and troubleshooting</p>
+          <p class="eyebrow">MasArray portfolio project for DNP3 commissioning, FAT, and troubleshooting</p>
           <h1>Test an IED. Trace the signal. Export the evidence.</h1>
           <p class="lead">
             A Windows desktop DNP3 master tester for protection relay FAT,
@@ -40,7 +105,7 @@
             review, and automated report evidence.
           </p>
           <div class="hero-actions">
-            <a class="button primary" href="#screens">See the workspace</a>
+            <a class="button primary" href="https://github.com/masarray/DNPTester/releases/latest">Download release</a>
             <a class="button secondary" href="#evidence">How evidence works</a>
           </div>
           <div class="trust-strip" aria-label="Core capabilities">
@@ -48,17 +113,18 @@
             <span>IED timestamp basis</span>
             <span>QuestPDF export</span>
             <span>Command lifecycle</span>
+            <span>Created by MasArray</span>
           </div>
         </div>
 
-        <aside class="hero-panel reveal delay-1" aria-label="Application preview">
+        <aside class="hero-panel reveal delay-1 interactive-surface" aria-label="Application preview" tabindex="0">
           <div class="hero-panel-top">
             <img class="panel-logo" src="assets/dnp-tester-logo.png" alt="DNP Tester logo" />
             <span class="live-pill">Device Responding</span>
           </div>
-          <div class="screen-frame featured-screen">
+          <button class="screen-frame featured-screen zoom-trigger" type="button" data-full="assets/screenshots/mission-control.png" data-title="Mission Control">
             <img src="assets/screenshots/mission-control.png" alt="Mission Control dashboard screenshot" />
-          </div>
+          </button>
           <div class="metric-row">
             <div><span>Live values</span><strong>Decoded</strong></div>
             <div><span>SOE</span><strong>Audited</strong></div>
@@ -88,6 +154,21 @@
         </div>
       </section>
 
+      <section class="section author-band" id="author">
+        <div class="author-card reveal interactive-surface" tabindex="0" role="button" aria-label="MasArray author profile">
+          <div>
+            <p class="eyebrow">Created by MasArray</p>
+            <h2>A portfolio-grade engineering tool for protocol communication testing.</h2>
+            <p>
+              This project is presented as a MasArray software portfolio for
+              engineers, students, vendors, and integrators who need to learn,
+              test, or troubleshoot DNP3 and SCADA data communication behavior.
+            </p>
+          </div>
+          <a class="button secondary" href="https://github.com/masarray">MasArray on GitHub</a>
+        </div>
+      </section>
+
       <section class="section" id="use-cases">
         <div class="section-heading reveal">
           <p class="eyebrow">Why engineers try it</p>
@@ -95,11 +176,12 @@
           <p>
             Use it when you need more than a connect button and a raw log. The
             app is organized around the practical questions engineers face
-            during relay FAT, SCADA integration, and field troubleshooting.
+            during relay FAT, SCADA integration, protocol communication testing,
+            data communication learning, and field troubleshooting.
           </p>
         </div>
         <div class="use-grid">
-          <article class="feature-card reveal">
+          <article class="feature-card reveal interactive-surface" tabindex="0">
             <span class="card-number">01</span>
             <h3>Test IEDs and relays</h3>
             <p>
@@ -107,7 +189,7 @@
               and confirm that the device is truly responding.
             </p>
           </article>
-          <article class="feature-card reveal delay-1">
+          <article class="feature-card reveal delay-1 interactive-surface" tabindex="0">
             <span class="card-number">02</span>
             <h3>Troubleshoot SCADA signals</h3>
             <p>
@@ -115,7 +197,7 @@
               traces when a signal is missing, stale, inverted, or timestamp-invalid.
             </p>
           </article>
-          <article class="feature-card reveal delay-2">
+          <article class="feature-card reveal delay-2 interactive-surface" tabindex="0">
             <span class="card-number">03</span>
             <h3>Build FAT evidence</h3>
             <p>
@@ -123,7 +205,7 @@
               recovery, SOE, and trace evidence into an exportable report.
             </p>
           </article>
-          <article class="feature-card reveal delay-3">
+          <article class="feature-card reveal delay-3 interactive-surface" tabindex="0">
             <span class="card-number">04</span>
             <h3>Check interoperability</h3>
             <p>
@@ -141,23 +223,23 @@
         </div>
         <div class="screen-grid">
           <article class="reveal">
-            <div class="screen-frame">
+            <button class="screen-frame zoom-trigger" type="button" data-full="assets/screenshots/report-preview.png" data-title="Report Workspace">
               <img src="assets/screenshots/report-preview.png" alt="Report workspace PDF preview screenshot" />
-            </div>
+            </button>
             <h3>Report Workspace</h3>
             <p>Guided FAT flow with QuestPDF preview and export-ready evidence.</p>
           </article>
           <article class="reveal delay-1">
-            <div class="screen-frame">
+            <button class="screen-frame zoom-trigger" type="button" data-full="assets/screenshots/scada-events.png" data-title="SCADA Events">
               <img src="assets/screenshots/scada-events.png" alt="SCADA events table screenshot" />
-            </div>
+            </button>
             <h3>SCADA Events</h3>
             <p>Operator-facing events with IED timestamp basis and quality context.</p>
           </article>
           <article class="reveal delay-2">
-            <div class="screen-frame">
+            <button class="screen-frame zoom-trigger" type="button" data-full="assets/screenshots/soe-audit.png" data-title="SOE Audit">
               <img src="assets/screenshots/soe-audit.png" alt="SOE audit table screenshot" />
-            </div>
+            </button>
             <h3>SOE Audit</h3>
             <p>Forensic rows for timestamp quality, variation, qualifier, and source reason.</p>
           </article>
@@ -175,27 +257,27 @@
           </p>
         </div>
         <div class="evidence-grid">
-          <div class="evidence-card reveal">
+          <div class="evidence-card reveal interactive-surface" tabindex="0">
             <strong>Connection evidence</strong>
             <span>Device response, decoded values, SOE rows, and protocol trace context.</span>
           </div>
-          <div class="evidence-card reveal delay-1">
+          <div class="evidence-card reveal delay-1 interactive-surface" tabindex="0">
             <strong>Point evidence</strong>
             <span>Binary and analog value review with operator verdict and remarks.</span>
           </div>
-          <div class="evidence-card reveal delay-2">
+          <div class="evidence-card reveal delay-2 interactive-surface" tabindex="0">
             <strong>Timestamp evidence</strong>
             <span>IED/source timestamp when valid, captured-time fallback when not.</span>
           </div>
-          <div class="evidence-card reveal">
+          <div class="evidence-card reveal interactive-surface" tabindex="0">
             <strong>Command evidence</strong>
             <span>Prepared, requested, accepted, feedback matched, and final verdict.</span>
           </div>
-          <div class="evidence-card reveal delay-1">
+          <div class="evidence-card reveal delay-1 interactive-surface" tabindex="0">
             <strong>Negative test evidence</strong>
             <span>Guarded non-operation workflow records blocked invalid command paths.</span>
           </div>
-          <div class="evidence-card reveal delay-2">
+          <div class="evidence-card reveal delay-2 interactive-surface" tabindex="0">
             <strong>PDF evidence</strong>
             <span>Preview and export use the same QuestPDF render path.</span>
           </div>
@@ -213,10 +295,27 @@
           </p>
         </div>
         <div class="report-list reveal delay-1" aria-label="Report capabilities">
-          <div><strong>FAT matrix</strong><span>Objective, evidence, recognition rule, and verdict.</span></div>
-          <div><strong>Completion status</strong><span>Separates partial FAT from protocol failure.</span></div>
-          <div><strong>Timestamp quality</strong><span>Flags valid, invalid, missing, and captured timestamp basis.</span></div>
-          <div><strong>Command lifecycle</strong><span>Shows acceptance, feedback, latency, and final result.</span></div>
+          <div class="interactive-surface" tabindex="0"><strong>FAT matrix</strong><span>Objective, evidence, recognition rule, and verdict.</span></div>
+          <div class="interactive-surface" tabindex="0"><strong>Completion status</strong><span>Separates partial FAT from protocol failure.</span></div>
+          <div class="interactive-surface" tabindex="0"><strong>Timestamp quality</strong><span>Flags valid, invalid, missing, and captured timestamp basis.</span></div>
+          <div class="interactive-surface" tabindex="0"><strong>Command lifecycle</strong><span>Shows acceptance, feedback, latency, and final result.</span></div>
+        </div>
+      </section>
+
+      <section class="section download-band" id="download">
+        <div class="download-card reveal interactive-surface" tabindex="0">
+          <div>
+            <p class="eyebrow">Windows release</p>
+            <h2>Download the latest installer from GitHub Releases.</h2>
+            <p>
+              GitHub Releases is the canonical place for installer assets,
+              release notes, checksums, and version history.
+            </p>
+          </div>
+          <div class="download-actions">
+            <a class="button primary" href="https://github.com/masarray/DNPTester/releases/latest">Latest release</a>
+            <a class="button secondary" href="https://github.com/masarray/DNPTester">View source</a>
+          </div>
         </div>
       </section>
 
@@ -233,12 +332,21 @@
         </div>
         <div class="notice reveal delay-1">
           <strong>Repository files to review</strong>
-          <span>LICENSE</span>
-          <span>THIRD-PARTY-NOTICES.md</span>
-          <span>Dnp3MasterTester/README.md</span>
+          <a href="https://github.com/masarray/DNPTester/blob/master/LICENSE">LICENSE</a>
+          <a href="https://github.com/masarray/DNPTester/blob/master/THIRD-PARTY-NOTICES.md">THIRD-PARTY-NOTICES.md</a>
+          <a href="https://github.com/masarray/DNPTester/blob/master/README.md">README.md</a>
+          <a href="https://github.com/masarray/DNPTester/blob/master/Dnp3MasterTester/README.md">Dnp3MasterTester README.md</a>
         </div>
       </section>
     </main>
+
+    <dialog class="lightbox" aria-label="Screenshot preview">
+      <button class="lightbox-close" type="button" aria-label="Close preview">Close</button>
+      <figure>
+        <img alt="" />
+        <figcaption></figcaption>
+      </figure>
+    </dialog>
 
     <footer class="site-footer">
       <span>DNP3 Interoperability Tester</span>
