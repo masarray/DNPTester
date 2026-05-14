@@ -5,11 +5,14 @@
 
 It is built on top of the official Step Function IO `.NET` DNP3 package and is intended to evolve into a credible FAT / interoperability / audit tool.
 
+![Mission Control](Assets/screenshot/web/mission-control.png)
+
 Current focus areas:
 - latest point state review
 - SCADA-style event journal
 - SOE / forensic callback evidence
 - protocol/runtime diagnostics
+- guided FAT report workspace and QuestPDF PDF export
 
 ## Status
 The project is functional but still under active refinement.
@@ -20,12 +23,15 @@ What already exists:
 - connection setup dialog
 - workspace tabs for value/event/audit/trace review
 - service-based integration with official Step Function DNP3 engine
+- real device-response evidence state, separate from open socket state
+- guided report workspace with PDF preview/export
+- command lifecycle evidence and FAT snapshot builder
 
 What still needs major work:
 - more credible polling/interoperability strategy
 - better relay-profile behavior
-- export/report output
-- command/operate testing workflow
+- deeper negative-test and recovery-test automation
+- profile-specific validation and report observations
 
 ## Technology
 - `.NET 8`
@@ -42,6 +48,8 @@ Shows last known state per point.
 Intended for operator-facing event journal rows such as:
 - binary state changes
 - command events
+- device response evidence
+- guarded non-operation and recovery workflow events
 
 ### `SOE Audit`
 Shows more callback-derived detail for forensic review.
@@ -49,23 +57,38 @@ Shows more callback-derived detail for forensic review.
 ### `Link Trace`
 Shows protocol/runtime diagnostics and engine trace information.
 
+### `Report Workspace`
+Guides report identity, verification steps, automated FAT evidence capture, and
+QuestPDF preview/export.
+
+## Screenshots
+
+### Report Workspace
+
+![Report preview](Assets/screenshot/web/report-preview.png)
+
+### SCADA Events
+
+![SCADA events](Assets/screenshot/web/scada-events.png)
+
+### SOE Audit
+
+![SOE audit](Assets/screenshot/web/soe-audit.png)
+
 ## Project structure
 
 Important files:
-- [AGENTS.md](/C:/Git/DNPTester/Dnp3MasterTester/AGENTS.md)
-- [PROJECT_CONTEXT.md](/C:/Git/DNPTester/Dnp3MasterTester/PROJECT_CONTEXT.md)
-- [project_tree.md](/C:/Git/DNPTester/Dnp3MasterTester/project_tree.md)
-- [project_data_flow.md](/C:/Git/DNPTester/Dnp3MasterTester/project_data_flow.md)
-- [project_summary.md](/C:/Git/DNPTester/Dnp3MasterTester/project_summary.md)
-- [MainWindow.xaml](/C:/Git/DNPTester/Dnp3MasterTester/MainWindow.xaml)
-- [ConnectionSettingsWindow.xaml](/C:/Git/DNPTester/Dnp3MasterTester/ConnectionSettingsWindow.xaml)
-- [ViewModels/MainViewModel.cs](/C:/Git/DNPTester/Dnp3MasterTester/ViewModels/MainViewModel.cs)
-- [Services/Dnp3MasterService.cs](/C:/Git/DNPTester/Dnp3MasterTester/Services/Dnp3MasterService.cs)
+- [MainWindow.xaml](MainWindow.xaml)
+- [ConnectionSettingsWindow.xaml](ConnectionSettingsWindow.xaml)
+- [ViewModels/MainViewModel.cs](ViewModels/MainViewModel.cs)
+- [Services/Dnp3MasterService.cs](Services/Dnp3MasterService.cs)
+- [Services/Reports/FatReportSnapshotBuilder.cs](Services/Reports/FatReportSnapshotBuilder.cs)
+- [Services/Reports/QuestPdfReportExportService.cs](Services/Reports/QuestPdfReportExportService.cs)
 
 ## Build
 
 ```powershell
-dotnet build C:\Git\DNPTester\Dnp3MasterTester\Dnp3MasterTester.csproj
+dotnet build DNPTester.slnx
 ```
 
 ## Development notes
