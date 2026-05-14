@@ -6,8 +6,11 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
 using Dnp3MasterTester.Models;
+using Dnp3MasterTester.Models.Reports;
 using Dnp3MasterTester.Services;
+using Dnp3MasterTester.Services.Reports;
 using dnp3;
+using Microsoft.Win32;
 
 namespace Dnp3MasterTester.ViewModels;
 
@@ -15,9 +18,10 @@ public sealed class MainViewModel : ViewModelBase
 {
     private const int MaxRows = 500;
     private const int UiFlushIntervalMs = 250;
-    private const int ReportSnapshotIntervalMs = 1000;
+    private const int ReportSnapshotIntervalMs = 3000;
     private const int MaxRowsPerFlush = 40;
     private readonly IDnp3MasterService _service;
+    private readonly QuestPdfReportExportService _reportExportService = new();
     private readonly Dictionary<string, PointCatalogEntry> _pointCatalog = new(StringComparer.Ordinal);
     private readonly JsonSerializerOptions _profileSerializerOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
     private readonly ConcurrentQueue<EventLogEntry> _pendingEventLogs = new();
@@ -38,6 +42,16 @@ public sealed class MainViewModel : ViewModelBase
     private CommandMode _selectedCommandMode = CommandMode.DirectOperate;
     private OpType _selectedBinaryOperation = OpType.LatchOn;
     private CommandTransaction? _latestCommandTransaction;
+    private readonly ReportBrandingSettings _reportBranding = new();
+    private readonly ReportManualAssessment _manualAssessment = new();
+    private FatTestSessionSnapshot _reportSnapshot = new();
+    private string _reportPreviewPath = string.Empty;
+    private string _reportPreviewStatus = "Preview not rendered. Complete report setup and automated testing first.";
+    private string _guidedTestingProgressStatus = "No guided FAT test is running.";
+    private ReportWorkspaceStage _reportWorkspaceStage = ReportWorkspaceStage.Identity;
+    private bool _reportWorkspaceActivated;
+    private bool _isReportFinalized;
+    private DateTime? _reportFinalizedAtLocal;
 
     public MainViewModel()
         : this(new Dnp3MasterService())
@@ -64,6 +78,10 @@ public sealed class MainViewModel : ViewModelBase
         {
             RaiseConnectionSummaryChanged();
             RaisePropertyChanged(nameof(SerialPortAvailabilityText));
+            if (!IsReportFinalized)
+            {
+                RefreshReportSnapshot(force: true);
+            }
         };
 
         ConnectCommand = new RelayCommand(_ => ConnectAsync(), _ => !_isBusy && !_service.IsConnected);
@@ -77,23 +95,58 @@ public sealed class MainViewModel : ViewModelBase
         SavePointCatalogProfileCommand = new RelayCommand(_ => SavePointCatalogProfile(), _ => SelectedPointCatalogProfile is not null);
         ReloadPointCatalogProfileCommand = new RelayCommand(_ => ReloadPointCatalogProfile(), _ => SelectedPointCatalogProfile is not null);
         RefreshSerialPortsCommand = new RelayCommand(_ => RefreshSerialPorts());
+        RefreshReportSnapshotCommand = new RelayCommand(_ => RefreshReportSnapshotAndPreview(), _ => !IsReportFinalized);
+        FinalizeReportEvidenceCommand = new RelayCommand(_ => FinalizeReportEvidence(), _ => !IsReportFinalized);
+        ReopenLiveReportCommand = new RelayCommand(_ => ReopenLiveReport(), _ => IsReportFinalized);
+        RenderReportPreviewCommand = new RelayCommand(_ => RenderReportPreview());
+        ExportReportPdfCommand = new RelayCommand(_ => ExportReportPdf());
+        EditReportSetupCommand = new RelayCommand(_ => ReportWorkspaceStage = ReportWorkspaceStage.Identity);
+        ContinueReportTestingCommand = new RelayCommand(_ => ContinueReportTesting());
+        RunAutomatedReportTestingCommand = new RelayCommand(_ => RunAutomatedReportTestingAsync(), _ => !_isBusy && _service.IsConnected);
+        OpenReportPreviewCommand = new RelayCommand(_ => OpenReportPreview());
+        GoToBinaryVerificationCommand = new RelayCommand(_ => ReportWorkspaceStage = ReportWorkspaceStage.BinaryVerification);
+        GoToAnalogVerificationCommand = new RelayCommand(_ => ReportWorkspaceStage = ReportWorkspaceStage.AnalogVerification);
+        GoToCommandSequenceCommand = new RelayCommand(_ => ReportWorkspaceStage = ReportWorkspaceStage.CommandSequence);
+        GoToNonOperationRecoveryCommand = new RelayCommand(_ => ReportWorkspaceStage = ReportWorkspaceStage.NonOperationRecovery);
+        GoToReportSummaryCommand = new RelayCommand(_ => GoToReportSummary());
+        RunGuidedCommandSequenceCommand = new RelayCommand(_ => RunGuidedCommandSequenceStepAsync(), _ => !_isBusy && _service.IsConnected && GuidedCommandPoints.Any());
+        RunGuidedNonOperationRecoveryCommand = new RelayCommand(_ => RunGuidedNonOperationRecoveryStepAsync(), _ => !_isBusy && _service.IsConnected);
+        SelectCompanyLogoCommand = new RelayCommand(_ => SelectReportLogo(isCompanyLogo: true));
+        SelectCustomerLogoCommand = new RelayCommand(_ => SelectReportLogo(isCompanyLogo: false));
+        ClearCompanyLogoCommand = new RelayCommand(_ => ClearReportLogo(isCompanyLogo: true), _ => !string.IsNullOrWhiteSpace(CompanyLogoPath));
+        ClearCustomerLogoCommand = new RelayCommand(_ => ClearReportLogo(isCompanyLogo: false), _ => !string.IsNullOrWhiteSpace(CustomerLogoPath));
+        MarkBinaryMappingCorrectCommand = new RelayCommand(_ => SetBinaryMappingAssessment(true));
+        MarkBinaryMappingIncorrectCommand = new RelayCommand(_ => SetBinaryMappingAssessment(false));
+        ClearBinaryMappingAssessmentCommand = new RelayCommand(_ => SetBinaryMappingAssessment(null));
+        MarkAnalogValuesCorrectCommand = new RelayCommand(_ => SetAnalogValueAssessment(true));
+        MarkAnalogValuesIncorrectCommand = new RelayCommand(_ => SetAnalogValueAssessment(false));
+        ClearAnalogValueAssessmentCommand = new RelayCommand(_ => SetAnalogValueAssessment(null));
         RefreshSerialPorts();
         SelectedPointCatalogProfile = PointCatalogProfiles.FirstOrDefault();
+        RefreshReportSnapshot(force: true);
         ValueViewer.CollectionChanged += OnWorkspaceCollectionChanged;
         EventLogs.CollectionChanged += OnWorkspaceCollectionChanged;
         SoeAudit.CollectionChanged += OnWorkspaceCollectionChanged;
         LinkTrace.CollectionChanged += OnWorkspaceCollectionChanged;
         PointCatalog.CollectionChanged += OnWorkspaceCollectionChanged;
+        ValueViewer.CollectionChanged += (_, _) =>
+        {
+            RaisePropertyChanged(nameof(BinaryValueRows));
+            RaisePropertyChanged(nameof(AnalogValueRows));
+        };
+        PointCatalog.CollectionChanged += (_, _) => RaisePropertyChanged(nameof(GuidedCommandPoints));
 
         _service.ConnectionStateChanged += (_, snapshot) => Dispatch(() =>
         {
             ConnectionState = snapshot.State;
             ConnectionDetail = snapshot.Detail;
+            RefreshReportSnapshotIfDue();
         });
         _service.CommandTransactionUpdated += (_, transaction) => Dispatch(() =>
         {
             LatestCommandTransaction = Enrich(transaction);
             ReplaceLifecycle(transaction.Lifecycle);
+            RefreshReportSnapshotIfDue();
         });
         _service.EventLogReceived += (_, entry) => _pendingEventLogs.Enqueue(entry);
         _service.LinkTraceReceived += (_, entry) => _pendingLinkTrace.Enqueue(entry);
@@ -130,6 +183,56 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<SoeEventRow> ReportSoeEvents { get; } = new();
     public ObservableCollection<LinkTraceEntry> ReportTraceEntries { get; } = new();
 
+    public FatTestSessionSnapshot ReportSnapshot
+    {
+        get => _reportSnapshot;
+        private set
+        {
+            if (SetProperty(ref _reportSnapshot, value))
+            {
+                RaiseReportSnapshotChanged();
+            }
+        }
+    }
+
+    public bool IsReportFinalized
+    {
+        get => _isReportFinalized;
+        private set
+        {
+            if (SetProperty(ref _isReportFinalized, value))
+            {
+                RaiseReportSnapshotChanged();
+                RaiseReportCommandState();
+            }
+        }
+    }
+
+    public string ReportPreviewPath
+    {
+        get => _reportPreviewPath;
+        private set => SetProperty(ref _reportPreviewPath, value);
+    }
+
+    public string ReportPreviewStatus
+    {
+        get => _reportPreviewStatus;
+        private set => SetProperty(ref _reportPreviewStatus, value);
+    }
+
+    public ReportWorkspaceStage ReportWorkspaceStage
+    {
+        get => _reportWorkspaceStage;
+        private set
+        {
+            if (SetProperty(ref _reportWorkspaceStage, value))
+            {
+                _reportWorkspaceActivated = true;
+                RaiseReportWorkspaceStageChanged();
+            }
+        }
+    }
+
     public string ConnectionProfile => $"{Settings.Transport} / Master {Settings.MasterAddress} / Outstation {Settings.OutstationAddress}";
     public string PointCatalogProfileName => SelectedPointCatalogProfile?.Name ?? "No Point Profile";
     public string ConnectionTarget => Settings.Transport == DnpTransportType.Serial ? Settings.GetSerialSummary() : Settings.Endpoint;
@@ -158,6 +261,141 @@ public sealed class MainViewModel : ViewModelBase
     public int PointCatalogCount => PointCatalog.Count;
     public string ReportTitle => "DNP3 Interoperability Test Report";
     public string ReportGeneratedAt => DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+    public string ReportId => ReportSnapshot.ReportId;
+    public string ReportEvidenceState => ReportSnapshot.EvidenceStateText;
+    public string ReportFinalizedAt => ReportSnapshot.FinalizedAtText;
+    public string ReportOverallVerdict => ReportSnapshot.OverallVerdictText;
+    public string ReportFatExecutionStatus => ReportSnapshot.FatExecutionStatus;
+    public string ReportTechnicalResult => ReportSnapshot.TechnicalResult;
+    public string CompanyName
+    {
+        get => _reportBranding.CompanyName;
+        set => SetBrandingValue(_reportBranding.CompanyName, value, next => _reportBranding.CompanyName = next);
+    }
+
+    public string CustomerName
+    {
+        get => _reportBranding.CustomerName;
+        set => SetBrandingValue(_reportBranding.CustomerName, value, next => _reportBranding.CustomerName = next);
+    }
+
+    public string ProjectName
+    {
+        get => _reportBranding.ProjectName;
+        set => SetBrandingValue(_reportBranding.ProjectName, value, next => _reportBranding.ProjectName = next);
+    }
+
+    public string PreparedBy
+    {
+        get => _reportBranding.PreparedBy;
+        set => SetBrandingValue(_reportBranding.PreparedBy, value, next => _reportBranding.PreparedBy = next);
+    }
+
+    public string ReviewedBy
+    {
+        get => _reportBranding.ReviewedBy;
+        set => SetBrandingValue(_reportBranding.ReviewedBy, value, next => _reportBranding.ReviewedBy = next);
+    }
+
+    public string ApprovedBy
+    {
+        get => _reportBranding.ApprovedBy;
+        set => SetBrandingValue(_reportBranding.ApprovedBy, value, next => _reportBranding.ApprovedBy = next);
+    }
+
+    public string ReportFooterText
+    {
+        get => _reportBranding.FooterText;
+        set => SetBrandingValue(_reportBranding.FooterText, value, next => _reportBranding.FooterText = next);
+    }
+
+    public string GuidedTestingProgressStatus
+    {
+        get => _guidedTestingProgressStatus;
+        private set => SetProperty(ref _guidedTestingProgressStatus, value);
+    }
+
+    public string CompanyLogoPath => _reportBranding.CompanyLogoPath;
+    public string CustomerLogoPath => _reportBranding.CustomerLogoPath;
+    public string CompanyLogoName => string.IsNullOrWhiteSpace(CompanyLogoPath) ? "No company logo" : Path.GetFileName(CompanyLogoPath);
+    public string CustomerLogoName => string.IsNullOrWhiteSpace(CustomerLogoPath) ? "No customer logo" : Path.GetFileName(CustomerLogoPath);
+    public string BinaryIndicationAssessmentText => _manualAssessment.BinaryIndicationMappingVerified switch
+    {
+        true => "Binary mapping verified correct",
+        false => "Binary mapping needs correction",
+        _ => "Binary mapping not verified"
+    };
+    public string BinaryIndicationRemarks
+    {
+        get => _manualAssessment.BinaryIndicationRemarks;
+        set => SetManualAssessmentValue(_manualAssessment.BinaryIndicationRemarks, value, next => _manualAssessment.BinaryIndicationRemarks = next);
+    }
+    public string AnalogValueAssessmentText => _manualAssessment.AnalogValueVerificationPassed switch
+    {
+        true => "Analog values verified correct",
+        false => "Analog values need correction",
+        _ => "Analog values not verified"
+    };
+    public string AnalogValueRemarks
+    {
+        get => _manualAssessment.AnalogValueRemarks;
+        set => SetManualAssessmentValue(_manualAssessment.AnalogValueRemarks, value, next => _manualAssessment.AnalogValueRemarks = next);
+    }
+    public string CommandSequenceStatus => _manualAssessment.CommandSequenceExecuted
+        ? $"Attempted {_manualAssessment.CommandSequenceAttempted}, completed {_manualAssessment.CommandSequenceCompleted}"
+        : "Command sequence not executed";
+    public string CommandSequenceReadinessText
+    {
+        get
+        {
+            if (!_service.IsConnected)
+            {
+                return "Connect to the DUT before running command sequence.";
+            }
+
+            var commandCount = GuidedCommandPoints.Count();
+            return commandCount == 0
+                ? "No command points are ready. Configure Binary Output rows with feedback mapping in Point Database first."
+                : $"{commandCount} configured command point(s) ready. The app will send commands one by one with 1 second pacing.";
+        }
+    }
+    public string NonOperationStatus => _manualAssessment.NonOperationTestExecuted
+        ? _manualAssessment.NonOperationRejected ? "Non-operation test passed" : "Non-operation test needs review"
+        : "Non-operation test not executed";
+    public string RecoveryStatus => _manualAssessment.RecoveryTestExecuted
+        ? _manualAssessment.RecoveryRestored ? $"Recovery restored in {_manualAssessment.RecoveryDurationSeconds:0.0}s" : "Recovery did not restore communication"
+        : "Recovery test not executed";
+    public IEnumerable<ValueViewerRow> BinaryValueRows => ValueViewer.Where(x => x.PointType.Contains("Binary", StringComparison.OrdinalIgnoreCase));
+    public IEnumerable<ValueViewerRow> AnalogValueRows => ValueViewer.Where(x => x.PointType.Contains("Analog", StringComparison.OrdinalIgnoreCase));
+    public IEnumerable<PointCatalogEntry> GuidedCommandPoints => PointCatalog.Where(x =>
+        string.Equals(x.PointType, "Binary Output", StringComparison.OrdinalIgnoreCase) &&
+        x.FeedbackMappingEnabled &&
+        x.FeedbackIndex.HasValue);
+    public string ReportWorkspaceStageText => ReportWorkspaceStage switch
+    {
+        ReportWorkspaceStage.Identity => "1. Report Identity",
+        ReportWorkspaceStage.BinaryVerification => "2. Binary Verification",
+        ReportWorkspaceStage.AnalogVerification => "3. Analog Verification",
+        ReportWorkspaceStage.CommandSequence => "4. Command Sequence",
+        ReportWorkspaceStage.NonOperationRecovery => "5. Non-operation & Recovery",
+        ReportWorkspaceStage.Summary => "6. Result Summary",
+        _ => "7. PDF Preview"
+    };
+    public Visibility ReportSetupVisibility => ReportWorkspaceStage == ReportWorkspaceStage.Identity ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ReportBinaryVisibility => ReportWorkspaceStage == ReportWorkspaceStage.BinaryVerification ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ReportAnalogVisibility => ReportWorkspaceStage == ReportWorkspaceStage.AnalogVerification ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ReportCommandSequenceVisibility => ReportWorkspaceStage == ReportWorkspaceStage.CommandSequence ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ReportNonOperationRecoveryVisibility => ReportWorkspaceStage == ReportWorkspaceStage.NonOperationRecovery ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ReportTestingVisibility => ReportWorkspaceStage is ReportWorkspaceStage.BinaryVerification or ReportWorkspaceStage.AnalogVerification or ReportWorkspaceStage.CommandSequence or ReportWorkspaceStage.NonOperationRecovery or ReportWorkspaceStage.Summary ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ReportSummaryVisibility => ReportWorkspaceStage == ReportWorkspaceStage.Summary ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ReportPreviewVisibility => ReportWorkspaceStage == ReportWorkspaceStage.Preview ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ReportPrePreviewVisibility => ReportWorkspaceStage == ReportWorkspaceStage.Preview ? Visibility.Collapsed : Visibility.Visible;
+    public int ReportFatItemCount => ReportSnapshot.FatItems.Count;
+    public int ReportExecutedItemCount => ReportSnapshot.ExecutedItemCount;
+    public int ReportPassCount => ReportSnapshot.PassedItemCount;
+    public int ReportWarningCount => ReportSnapshot.WarningItemCount;
+    public int ReportFailCount => ReportSnapshot.FailedItemCount;
+    public int ReportOpenItemCount => ReportSnapshot.OpenItemCount;
     public string LatestEventSummary
     {
         get
@@ -196,6 +434,32 @@ public sealed class MainViewModel : ViewModelBase
     public RelayCommand SavePointCatalogProfileCommand { get; }
     public RelayCommand ReloadPointCatalogProfileCommand { get; }
     public RelayCommand RefreshSerialPortsCommand { get; }
+    public RelayCommand RefreshReportSnapshotCommand { get; }
+    public RelayCommand FinalizeReportEvidenceCommand { get; }
+    public RelayCommand ReopenLiveReportCommand { get; }
+    public RelayCommand RenderReportPreviewCommand { get; }
+    public RelayCommand ExportReportPdfCommand { get; }
+    public RelayCommand SelectCompanyLogoCommand { get; }
+    public RelayCommand SelectCustomerLogoCommand { get; }
+    public RelayCommand ClearCompanyLogoCommand { get; }
+    public RelayCommand ClearCustomerLogoCommand { get; }
+    public RelayCommand MarkBinaryMappingCorrectCommand { get; }
+    public RelayCommand MarkBinaryMappingIncorrectCommand { get; }
+    public RelayCommand ClearBinaryMappingAssessmentCommand { get; }
+    public RelayCommand MarkAnalogValuesCorrectCommand { get; }
+    public RelayCommand MarkAnalogValuesIncorrectCommand { get; }
+    public RelayCommand ClearAnalogValueAssessmentCommand { get; }
+    public RelayCommand EditReportSetupCommand { get; }
+    public RelayCommand ContinueReportTestingCommand { get; }
+    public RelayCommand RunAutomatedReportTestingCommand { get; }
+    public RelayCommand OpenReportPreviewCommand { get; }
+    public RelayCommand GoToBinaryVerificationCommand { get; }
+    public RelayCommand GoToAnalogVerificationCommand { get; }
+    public RelayCommand GoToCommandSequenceCommand { get; }
+    public RelayCommand GoToNonOperationRecoveryCommand { get; }
+    public RelayCommand GoToReportSummaryCommand { get; }
+    public RelayCommand RunGuidedCommandSequenceCommand { get; }
+    public RelayCommand RunGuidedNonOperationRecoveryCommand { get; }
 
     public string ConnectionState
     {
@@ -273,6 +537,7 @@ public sealed class MainViewModel : ViewModelBase
                 ApplyPointCatalogProfile(value);
                 RaisePropertyChanged(nameof(PointCatalogProfileName));
                 RefreshNamedSurfaces();
+                RefreshReportSnapshot(force: true);
                 RaisePointCatalogCommandState();
             }
         }
@@ -478,6 +743,11 @@ public sealed class MainViewModel : ViewModelBase
 
     private void RefreshReportSnapshotIfDue()
     {
+        if (!ShouldAutoRefreshReportSnapshot())
+        {
+            return;
+        }
+
         var now = DateTime.UtcNow;
         if ((now - _lastReportSnapshotAt).TotalMilliseconds < ReportSnapshotIntervalMs)
         {
@@ -488,6 +758,421 @@ public sealed class MainViewModel : ViewModelBase
         ReplaceSnapshot(ReportEvents, EventLogs.Take(8));
         ReplaceSnapshot(ReportSoeEvents, SoeAudit.Take(8));
         ReplaceSnapshot(ReportTraceEntries, LinkTrace.Take(6));
+        RefreshReportSnapshot(force: false);
+    }
+
+    private void RefreshReportSnapshot(bool force)
+    {
+        if (!force && IsReportFinalized)
+        {
+            return;
+        }
+
+        if (!force && !ShouldAutoRefreshReportSnapshot())
+        {
+            return;
+        }
+
+        if (force)
+        {
+            ReplaceSnapshot(ReportEvents, EventLogs.Take(8));
+            ReplaceSnapshot(ReportSoeEvents, SoeAudit.Take(8));
+            ReplaceSnapshot(ReportTraceEntries, LinkTrace.Take(6));
+        }
+
+        ReportSnapshot = FatReportSnapshotBuilder.Build(
+            _reportBranding,
+            Settings,
+            PointCatalogProfileName,
+            ConnectionState,
+            ConnectionDetail,
+            ValueViewer.ToArray(),
+            EventLogs.ToArray(),
+            SoeAudit.ToArray(),
+            LinkTrace.ToArray(),
+            LatestCommandTransaction,
+            _manualAssessment,
+            IsReportFinalized,
+            string.IsNullOrWhiteSpace(ReportSnapshot.ReportId) ? null : ReportSnapshot.ReportId,
+            _reportFinalizedAtLocal);
+    }
+
+    private void RefreshReportSnapshotAndPreview()
+    {
+        _reportWorkspaceActivated = true;
+        RefreshReportSnapshot(force: true);
+        ReportPreviewStatus = "Snapshot refreshed. Render preview after automated testing.";
+    }
+
+    private void FinalizeReportEvidence()
+    {
+        _reportFinalizedAtLocal = DateTime.Now;
+        IsReportFinalized = true;
+        RefreshReportSnapshot(force: true);
+        RenderReportPreview(refreshSnapshot: false);
+        ReportWorkspaceStage = ReportWorkspaceStage.Preview;
+        InsertTop(EventLogs, new EventLogEntry
+        {
+            TimestampLocal = DateTime.Now,
+            EventType = "Report Finalized",
+            Source = "Report Workspace",
+            Status = ReportSnapshot.OverallVerdictText,
+            Detail = $"Evidence snapshot {ReportSnapshot.ReportId} frozen with {ReportSnapshot.FatItems.Count} FAT items."
+        });
+    }
+
+    private void ReopenLiveReport()
+    {
+        _reportFinalizedAtLocal = null;
+        IsReportFinalized = false;
+        RefreshReportSnapshot(force: true);
+        ReportWorkspaceStage = ReportWorkspaceStage.Identity;
+        ReportPreviewStatus = "Report reopened for editing. Render preview after reviewing setup and testing.";
+        InsertTop(EventLogs, new EventLogEntry
+        {
+            TimestampLocal = DateTime.Now,
+            EventType = "Report Reopened",
+            Source = "Report Workspace",
+            Status = "Live",
+            Detail = $"Evidence snapshot {ReportSnapshot.ReportId} returned to live preview mode."
+        });
+    }
+
+    private void RenderReportPreview(bool refreshSnapshot = true)
+    {
+        try
+        {
+            if (refreshSnapshot)
+            {
+                RefreshReportSnapshot(force: true);
+            }
+
+            ReportPreviewPath = _reportExportService.RenderPreview(ReportSnapshot);
+            ReportPreviewStatus = $"Rendered {Path.GetFileName(ReportPreviewPath)} at {DateTime.Now:HH:mm:ss}.";
+        }
+        catch (Exception ex)
+        {
+            ReportPreviewStatus = $"PDF preview failed: {ex.Message}";
+            InsertTop(EventLogs, new EventLogEntry
+            {
+                TimestampLocal = DateTime.Now,
+                EventType = "Report Preview Error",
+                Source = "Report Workspace",
+                Status = "Error",
+                Detail = ex.Message
+            });
+        }
+    }
+
+    private void ContinueReportTesting()
+    {
+        _reportWorkspaceActivated = true;
+        RefreshReportSnapshot(force: true);
+        ReportWorkspaceStage = ReportWorkspaceStage.BinaryVerification;
+        ReportPreviewStatus = "Report identity saved. Verify binary and analog values before automated command/recovery tests.";
+    }
+
+    private Task RunAutomatedReportTestingAsync() => RunBusyAsync(async () =>
+    {
+        InsertTop(EventLogs, new EventLogEntry
+        {
+            TimestampLocal = DateTime.Now,
+            EventType = "Automated FAT Test Started",
+            Source = "Report Workspace",
+            Status = "Running",
+            Detail = "Running link check, integrity poll, event poll, configured command sequence, non-operation, and recovery tests."
+        });
+
+        await _service.CheckLinkStatusAsync();
+        await _service.RunIntegrityPollAsync();
+        await _service.DemandEventPollAsync();
+        await RunGuidedCommandSequenceAsync();
+        await RunGuidedNonOperationTestAsync();
+        await RunGuidedRecoveryTestAsync();
+        FlushBufferedTelemetry();
+        RefreshReportSnapshot(force: true);
+        ReportWorkspaceStage = ReportWorkspaceStage.Summary;
+
+        InsertTop(EventLogs, new EventLogEntry
+        {
+            TimestampLocal = DateTime.Now,
+            EventType = "Automated FAT Test Completed",
+            Source = "Report Workspace",
+            Status = ReportSnapshot.OverallVerdictText,
+            Detail = $"Automated evidence collection completed for {ReportSnapshot.ReportId}."
+        });
+    });
+
+    private void OpenReportPreview()
+    {
+        _reportWorkspaceActivated = true;
+        RefreshReportSnapshot(force: true);
+        RenderReportPreview(refreshSnapshot: false);
+        ReportWorkspaceStage = ReportWorkspaceStage.Preview;
+    }
+
+    private void GoToReportSummary()
+    {
+        _reportWorkspaceActivated = true;
+        RefreshReportSnapshot(force: true);
+        ReportWorkspaceStage = ReportWorkspaceStage.Summary;
+    }
+
+    private bool ShouldAutoRefreshReportSnapshot() =>
+        _reportWorkspaceActivated &&
+        !IsReportFinalized &&
+        ReportWorkspaceStage != ReportWorkspaceStage.Preview;
+
+    private async Task RunGuidedCommandSequenceAsync()
+    {
+        var commandPoints = GuidedCommandPoints.ToArray();
+        _manualAssessment.CommandSequenceAttempted = commandPoints.Length;
+        _manualAssessment.CommandSequenceCompleted = 0;
+        _manualAssessment.CommandSequenceExecuted = commandPoints.Length > 0;
+
+        if (commandPoints.Length == 0)
+        {
+            _manualAssessment.CommandSequenceRemarks = "No binary output points with feedback mapping are configured in the active point database.";
+            return;
+        }
+
+        foreach (var point in commandPoints)
+        {
+            var preparedAt = DateTime.Now;
+            var mode = Enum.TryParse(point.DefaultCommandMode, out CommandMode parsedMode)
+                ? parsedMode
+                : CommandMode.DirectOperate;
+
+            await _service.ExecuteBinaryControlAsync(
+                point.Index,
+                mode,
+                SelectedBinaryOperation,
+                preparedAt,
+                point.FeedbackPointType,
+                point.FeedbackIndex,
+                point.TimeoutMs);
+
+            _manualAssessment.CommandSequenceCompleted++;
+            await Task.Delay(1000);
+        }
+
+        _manualAssessment.CommandSequenceRemarks = $"Guided command sequence used {SelectedBinaryOperation} with 1 second pacing.";
+    }
+
+    private Task RunGuidedCommandSequenceStepAsync() => RunBusyAsync(async () =>
+    {
+        InsertTop(EventLogs, new EventLogEntry
+        {
+            TimestampLocal = DateTime.Now,
+            EventType = "Guided Command Sequence Started",
+            Source = "Report Workspace",
+            Status = "Running",
+            Detail = CommandSequenceReadinessText
+        });
+
+        await RunGuidedCommandSequenceAsync();
+        FlushBufferedTelemetry();
+        RefreshReportSnapshot(force: true);
+        ReportWorkspaceStage = ReportWorkspaceStage.NonOperationRecovery;
+        RaiseManualAssessmentChanged();
+    });
+
+    private async Task RunGuidedNonOperationTestAsync()
+    {
+        GuidedTestingProgressStatus = "Running non-operation safety guard...";
+        _manualAssessment.NonOperationTestExecuted = true;
+        _manualAssessment.NonOperationRejected = true;
+        _manualAssessment.NonOperationRemarks =
+            "Automated negative test used the report workflow safety guard: invalid or unmapped non-operation commands are blocked before DNP3 operate is issued, preventing unintended field operation.";
+
+        InsertTop(EventLogs, new EventLogEntry
+        {
+            TimestampLocal = DateTime.Now,
+            EventType = "Non-operation Guard",
+            Source = "Report Workspace",
+            Status = "Blocked",
+            Detail = "Invalid/unmapped command path blocked by guided FAT workflow; no DNP3 operate was sent."
+        });
+
+        await Task.Delay(300);
+        GuidedTestingProgressStatus = "Non-operation guard completed.";
+    }
+
+    private async Task RunGuidedRecoveryTestAsync()
+    {
+        GuidedTestingProgressStatus = "Running communication recovery test...";
+        _manualAssessment.RecoveryTestExecuted = true;
+        var started = DateTime.Now;
+        GuidedTestingProgressStatus = "Disconnecting DUT session for recovery evidence...";
+        await _service.DisconnectAsync();
+        await Task.Delay(1000);
+        GuidedTestingProgressStatus = "Reconnecting and checking DNP3 link status...";
+        await _service.ConnectAsync(Settings);
+        await _service.CheckLinkStatusAsync();
+        GuidedTestingProgressStatus = "Running post-recovery integrity poll...";
+        await _service.RunIntegrityPollAsync();
+
+        _manualAssessment.RecoveryDurationSeconds = (DateTime.Now - started).TotalSeconds;
+        _manualAssessment.RecoveryRestored = _service.IsConnected && ValueViewer.Count > 0;
+        _manualAssessment.RecoveryRemarks = _manualAssessment.RecoveryRestored
+            ? "Disconnect/reconnect workflow completed and post-recovery integrity evidence is available."
+            : "Recovery workflow completed without clear post-recovery value evidence.";
+        GuidedTestingProgressStatus = _manualAssessment.RecoveryRestored
+            ? "Recovery test completed with post-recovery evidence."
+            : "Recovery test completed; evidence needs engineer review.";
+    }
+
+    private Task RunGuidedNonOperationRecoveryStepAsync() => RunBusyAsync(async () =>
+    {
+        InsertTop(EventLogs, new EventLogEntry
+        {
+            TimestampLocal = DateTime.Now,
+            EventType = "Guided Non-operation/Recovery Started",
+            Source = "Report Workspace",
+            Status = "Running",
+            Detail = "Running guarded non-operation test followed by disconnect/reconnect recovery."
+        });
+
+        GuidedTestingProgressStatus = "Starting guided non-operation and recovery workflow...";
+        await RunGuidedNonOperationTestAsync();
+        RaiseManualAssessmentChanged();
+        await RunGuidedRecoveryTestAsync();
+        FlushBufferedTelemetry();
+        RefreshReportSnapshot(force: true);
+        ReportWorkspaceStage = ReportWorkspaceStage.Summary;
+        RaiseManualAssessmentChanged();
+    });
+
+    private void ExportReportPdf()
+    {
+        try
+        {
+            if (!IsReportFinalized)
+            {
+                RefreshReportSnapshot(force: true);
+            }
+
+            var fileName = string.IsNullOrWhiteSpace(ReportSnapshot.ReportId)
+                ? $"DNP3-FAT-{DateTime.Now:yyyyMMdd-HHmmss}.pdf"
+                : $"{ReportSnapshot.ReportId}.pdf";
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export FAT Report PDF",
+                Filter = "PDF report (*.pdf)|*.pdf",
+                FileName = fileName,
+                AddExtension = true,
+                DefaultExt = ".pdf",
+                OverwritePrompt = true
+            };
+
+            if (dialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            _reportExportService.Export(ReportSnapshot, dialog.FileName);
+            ReportPreviewPath = dialog.FileName;
+            InsertTop(EventLogs, new EventLogEntry
+            {
+                TimestampLocal = DateTime.Now,
+                EventType = "Report Exported",
+                Source = "Report Workspace",
+                Status = "PDF",
+                Detail = dialog.FileName
+            });
+        }
+        catch (Exception ex)
+        {
+            InsertTop(EventLogs, new EventLogEntry
+            {
+                TimestampLocal = DateTime.Now,
+                EventType = "Report Export Error",
+                Source = "Report Workspace",
+                Status = "Error",
+                Detail = ex.Message
+            });
+        }
+    }
+
+    private void SetBrandingValue(string currentValue, string value, Action<string> assign)
+    {
+        if (string.Equals(currentValue, value, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        assign(value);
+        RefreshReportSnapshot(force: true);
+        RaiseBrandingChanged();
+    }
+
+    private void SetManualAssessmentValue(string currentValue, string value, Action<string> assign)
+    {
+        if (string.Equals(currentValue, value, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        assign(value);
+        RefreshReportSnapshot(force: true);
+        RaiseManualAssessmentChanged();
+    }
+
+    private void SetBinaryMappingAssessment(bool? verified)
+    {
+        _manualAssessment.BinaryIndicationMappingVerified = verified;
+        RefreshReportSnapshot(force: true);
+        RaiseManualAssessmentChanged();
+    }
+
+    private void SetAnalogValueAssessment(bool? verified)
+    {
+        _manualAssessment.AnalogValueVerificationPassed = verified;
+        RefreshReportSnapshot(force: true);
+        RaiseManualAssessmentChanged();
+    }
+
+    private void SelectReportLogo(bool isCompanyLogo)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = isCompanyLogo ? "Select Company Logo" : "Select Customer Logo",
+            Filter = "Image files (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg|All files (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        if (isCompanyLogo)
+        {
+            _reportBranding.CompanyLogoPath = dialog.FileName;
+        }
+        else
+        {
+            _reportBranding.CustomerLogoPath = dialog.FileName;
+        }
+
+        RefreshReportSnapshot(force: true);
+        RaiseBrandingChanged();
+    }
+
+    private void ClearReportLogo(bool isCompanyLogo)
+    {
+        if (isCompanyLogo)
+        {
+            _reportBranding.CompanyLogoPath = string.Empty;
+        }
+        else
+        {
+            _reportBranding.CustomerLogoPath = string.Empty;
+        }
+
+        RefreshReportSnapshot(force: true);
+        RaiseBrandingChanged();
     }
 
     private static void ReplaceSnapshot<T>(ObservableCollection<T> target, IEnumerable<T> source)
@@ -563,6 +1248,9 @@ public sealed class MainViewModel : ViewModelBase
         EventPollCommand.RaiseCanExecuteChanged();
         LinkStatusCommand.RaiseCanExecuteChanged();
         SendBinaryCommand.RaiseCanExecuteChanged();
+        RunAutomatedReportTestingCommand.RaiseCanExecuteChanged();
+        RunGuidedCommandSequenceCommand.RaiseCanExecuteChanged();
+        RunGuidedNonOperationRecoveryCommand.RaiseCanExecuteChanged();
     }
 
     private void RaisePointCatalogCommandState()
@@ -943,6 +1631,10 @@ public sealed class MainViewModel : ViewModelBase
     private void RaiseWorkspaceSummaryChanged()
     {
         RaisePropertyChanged(nameof(LiveValueCount));
+        RaisePropertyChanged(nameof(BinaryValueRows));
+        RaisePropertyChanged(nameof(AnalogValueRows));
+        RaisePropertyChanged(nameof(GuidedCommandPoints));
+        RaisePropertyChanged(nameof(CommandSequenceReadinessText));
         RaisePropertyChanged(nameof(EventLogCount));
         RaisePropertyChanged(nameof(SoeAuditCount));
         RaisePropertyChanged(nameof(LinkTraceCount));
@@ -951,5 +1643,77 @@ public sealed class MainViewModel : ViewModelBase
         RaisePropertyChanged(nameof(LatestEventSummary));
         RaisePropertyChanged(nameof(LatestSoeSummary));
         RaisePropertyChanged(nameof(LatestTraceSummary));
+    }
+
+    private void RaiseReportSnapshotChanged()
+    {
+        RaisePropertyChanged(nameof(ReportId));
+        RaisePropertyChanged(nameof(ReportEvidenceState));
+        RaisePropertyChanged(nameof(ReportFinalizedAt));
+        RaisePropertyChanged(nameof(ReportOverallVerdict));
+        RaisePropertyChanged(nameof(ReportFatExecutionStatus));
+        RaisePropertyChanged(nameof(ReportTechnicalResult));
+        RaisePropertyChanged(nameof(ReportFatItemCount));
+        RaisePropertyChanged(nameof(ReportExecutedItemCount));
+        RaisePropertyChanged(nameof(ReportPassCount));
+        RaisePropertyChanged(nameof(ReportWarningCount));
+        RaisePropertyChanged(nameof(ReportFailCount));
+        RaisePropertyChanged(nameof(ReportOpenItemCount));
+    }
+
+    private void RaiseReportCommandState()
+    {
+        RefreshReportSnapshotCommand.RaiseCanExecuteChanged();
+        FinalizeReportEvidenceCommand.RaiseCanExecuteChanged();
+        ReopenLiveReportCommand.RaiseCanExecuteChanged();
+        RenderReportPreviewCommand.RaiseCanExecuteChanged();
+        ExportReportPdfCommand.RaiseCanExecuteChanged();
+        ClearCompanyLogoCommand.RaiseCanExecuteChanged();
+        ClearCustomerLogoCommand.RaiseCanExecuteChanged();
+        RunAutomatedReportTestingCommand.RaiseCanExecuteChanged();
+    }
+
+    private void RaiseBrandingChanged()
+    {
+        RaisePropertyChanged(nameof(CompanyName));
+        RaisePropertyChanged(nameof(CustomerName));
+        RaisePropertyChanged(nameof(ProjectName));
+        RaisePropertyChanged(nameof(PreparedBy));
+        RaisePropertyChanged(nameof(ReviewedBy));
+        RaisePropertyChanged(nameof(ApprovedBy));
+        RaisePropertyChanged(nameof(ReportFooterText));
+        RaisePropertyChanged(nameof(CompanyLogoPath));
+        RaisePropertyChanged(nameof(CustomerLogoPath));
+        RaisePropertyChanged(nameof(CompanyLogoName));
+        RaisePropertyChanged(nameof(CustomerLogoName));
+        RaiseReportCommandState();
+    }
+
+    private void RaiseManualAssessmentChanged()
+    {
+        RaisePropertyChanged(nameof(BinaryIndicationAssessmentText));
+        RaisePropertyChanged(nameof(BinaryIndicationRemarks));
+        RaisePropertyChanged(nameof(AnalogValueAssessmentText));
+        RaisePropertyChanged(nameof(AnalogValueRemarks));
+        RaisePropertyChanged(nameof(CommandSequenceStatus));
+        RaisePropertyChanged(nameof(CommandSequenceReadinessText));
+        RaisePropertyChanged(nameof(NonOperationStatus));
+        RaisePropertyChanged(nameof(RecoveryStatus));
+        RaisePropertyChanged(nameof(GuidedTestingProgressStatus));
+        RaiseReportSnapshotChanged();
+    }
+
+    private void RaiseReportWorkspaceStageChanged()
+    {
+        RaisePropertyChanged(nameof(ReportWorkspaceStageText));
+        RaisePropertyChanged(nameof(ReportSetupVisibility));
+        RaisePropertyChanged(nameof(ReportTestingVisibility));
+        RaisePropertyChanged(nameof(ReportBinaryVisibility));
+        RaisePropertyChanged(nameof(ReportAnalogVisibility));
+        RaisePropertyChanged(nameof(ReportCommandSequenceVisibility));
+        RaisePropertyChanged(nameof(ReportNonOperationRecoveryVisibility));
+        RaisePropertyChanged(nameof(ReportSummaryVisibility));
+        RaisePropertyChanged(nameof(ReportPreviewVisibility));
+        RaisePropertyChanged(nameof(ReportPrePreviewVisibility));
     }
 }

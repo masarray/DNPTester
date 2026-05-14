@@ -24,6 +24,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
     private CommandTransactionState? _latestCommandTransaction;
     private CancellationTokenSource? _commandFeedbackTimeoutCts;
     private int _commandSequence;
+    private bool _hasDeviceResponse;
 
     public event EventHandler<ConnectionStatusSnapshot>? ConnectionStateChanged;
     public event EventHandler<CommandTransaction>? CommandTransactionUpdated;
@@ -86,10 +87,11 @@ public sealed class Dnp3MasterService : IDnp3MasterService
                 _channel.Enable();
                 StartStaticRefreshLoop(profile, _channel, _association, _sessionCts.Token);
                 IsConnected = true;
+                _hasDeviceResponse = false;
             }
         }, cancellationToken);
 
-        RaiseConnection("Connected", "DNP3 master enabled");
+        RaiseConnection("Transport Open", "DNP3 master channel enabled; waiting for outstation response");
         WriteEvent("ENGINE", "Session", "Master channel enabled");
         WriteEvent(
             "MASTER",
@@ -173,6 +175,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         SetPendingSourceReason(SourceReason.ManualIntegrity);
         await channel.Read(association, Request.ClassRequest(true, true, true, true));
         WriteEvent("MASTER", "Poll", "Integrity poll completed");
+        MarkDeviceResponding("DNP3 integrity poll completed with outstation response");
     }
 
     public async Task CheckLinkStatusAsync()
@@ -194,6 +197,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         var result = await channel.CheckLinkStatus(association);
         WriteTrace("TX/RX", "Link", $"Check link status result: {result}");
         WriteEvent("MASTER", "Link", $"Check link status result: {result}");
+        MarkDeviceResponding($"DNP3 link status response received: {result}");
     }
 
     public async Task ExecuteBinaryControlAsync(
@@ -350,6 +354,35 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         });
     }
 
+    private void MarkDeviceResponding(string evidence)
+    {
+        var shouldPublish = false;
+        lock (_sync)
+        {
+            if (!_hasDeviceResponse)
+            {
+                _hasDeviceResponse = true;
+                shouldPublish = true;
+            }
+        }
+
+        if (shouldPublish)
+        {
+            RaiseConnection("Device Responding", evidence);
+            PublishScadaEvent(
+                "Device Response",
+                "DNP3",
+                "Outstation",
+                0,
+                "Responding",
+                string.Empty,
+                "Confirmed",
+                "-",
+                SourceReason.Unknown,
+                evidence);
+        }
+    }
+
     private void WriteEvent(string source, string category, string message)
     {
         WriteTrace("EVENT", category, $"{source}: {message}");
@@ -410,6 +443,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         };
 
         _latestValues.AddOrUpdate(pointKey, row, (_, _) => row);
+        MarkDeviceResponding($"DNP3 object response received from outstation: {pointType} {index}");
         ValueReceived?.Invoke(this, row);
         SoeEventReceived?.Invoke(this, new SoeEventRow
         {
@@ -436,27 +470,41 @@ public sealed class Dnp3MasterService : IDnp3MasterService
 
         if (IsBinaryStatePoint(pointType) && previous is not null && !string.Equals(previous.Value, value, StringComparison.Ordinal))
         {
-            PublishScadaEvent("Binary State Change", source, pointType, index, value, previous.Value, flags, sourceTimestamp.TimeQuality, fragment.SourceReason, $"State changed from {previous.Value} to {value}");
+            PublishScadaEvent("Binary State Change", source, pointType, index, value, previous.Value, flags, sourceTimestamp.TimeQuality, fragment.SourceReason, $"State changed from {previous.Value} to {value}", sourceTimestamp);
         }
 
         if (IsBinaryStatePoint(pointType) && previous is null && fragment.SourceReason != SourceReason.StartupIntegrity)
         {
-            PublishScadaEvent("Binary State Initialize", source, pointType, index, value, string.Empty, flags, sourceTimestamp.TimeQuality, fragment.SourceReason, "Initial binary state observed");
+            PublishScadaEvent("Binary State Initialize", source, pointType, index, value, string.Empty, flags, sourceTimestamp.TimeQuality, fragment.SourceReason, "Initial binary state observed", sourceTimestamp);
         }
 
         if (pointType.Contains("Command Event", StringComparison.Ordinal))
         {
-            PublishScadaEvent("Command Event", source, pointType, index, value, previous?.Value ?? string.Empty, status, sourceTimestamp.TimeQuality, SourceReason.CommandResponse, $"Command event recorded with status {status}");
+            PublishScadaEvent("Command Event", source, pointType, index, value, previous?.Value ?? string.Empty, status, sourceTimestamp.TimeQuality, SourceReason.CommandResponse, $"Command event recorded with status {status}", sourceTimestamp);
         }
 
         TryCorrelateCommandFeedback(pointType, index, value, status, sourceTimestamp, previous);
     }
 
-    private void PublishScadaEvent(string eventType, string source, string pointType, ushort index, string value, string previousValue, string status, string quality, SourceReason sourceReason, string detail)
+    private void PublishScadaEvent(
+        string eventType,
+        string source,
+        string pointType,
+        ushort index,
+        string value,
+        string previousValue,
+        string status,
+        string quality,
+        SourceReason sourceReason,
+        string detail,
+        SourceTimestampInfo? sourceTimestamp = null)
     {
+        var capturedAt = DateTime.Now;
         EventLogReceived?.Invoke(this, new EventLogEntry
         {
-            TimestampLocal = DateTime.Now,
+            TimestampLocal = capturedAt,
+            SourceTimestampLocal = sourceTimestamp?.LocalTime,
+            SourceTimestampKind = sourceTimestamp?.Kind ?? SourceTimestampKind.NotSupplied,
             EventType = eventType,
             Source = source,
             PointType = pointType,
@@ -1001,6 +1049,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
 
         public void TaskSuccess(TaskType taskType, FunctionCode fc, byte seq)
         {
+            owner.MarkDeviceResponding($"DNP3 task succeeded: {taskType} / {fc} seq={seq}");
             owner.WriteEvent("ASSOC", "TaskSuccess", $"{taskType} / {fc} seq={seq}");
         }
 
@@ -1019,6 +1068,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
     {
         public void BeginFragment(ReadType readType, ResponseHeader header)
         {
+            owner.MarkDeviceResponding($"DNP3 response fragment received: {readType} IIN={header.Iin}");
             owner.SetFragmentContext(readType.ToString(), header.Iin.Iin1.Broadcast, notes: $"Fragment start IIN={header.Iin}");
             owner.WriteEvent("READ", "BeginFragment", $"{readType} broadcast={header.Iin.Iin1.Broadcast}");
         }
