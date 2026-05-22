@@ -13,6 +13,8 @@ public interface IDnp3MasterService
     event EventHandler<LinkTraceEntry>? LinkTraceReceived;
 
     bool IsConnected { get; }
+    bool HasDeviceResponse { get; }
+    bool IsOperationalReady { get; }
 
     Task ConnectAsync(ConnectionSettings settings, CancellationToken cancellationToken = default);
     Task DisconnectAsync();

@@ -49,8 +49,8 @@
         </LinearGradientBrush>
 
         <LinearGradientBrush x:Key="PremiumPrimaryBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#168A98" Offset="0"/>
-            <GradientStop Color="#0F6B7A" Offset="1"/>
+            <GradientStop Color="#25C3D7" Offset="0"/>
+            <GradientStop Color="#07879A" Offset="1"/>
         </LinearGradientBrush>
 
         <LinearGradientBrush x:Key="PremiumTableHeaderBrush" StartPoint="0,0" EndPoint="0,1">
@@ -290,13 +290,16 @@
         </Style>
 
         <Style TargetType="Button">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             <Setter Property="Background" Value="{StaticResource PremiumControlBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Padding" Value="16,8" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -304,7 +307,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
+                                CornerRadius="10"
                                 Padding="{TemplateBinding Padding}"
                                 RenderTransformOrigin="0.5,0.5">
                             <Border.RenderTransform>
@@ -313,7 +316,17 @@
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               RecognizesAccessKey="True"
-                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                                              TextElement.Foreground="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ContentPresenter.Resources>
+                                    <!-- Force string button content to inherit the button foreground.
+                                         This prevents primary teal buttons from rendering black text. -->
+                                    <Style TargetType="{x:Type TextBlock}">
+                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                                        <Setter Property="FontWeight" Value="{Binding FontWeight, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                    </Style>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -321,16 +334,32 @@
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.015" Duration="0:0:0.10" />
-                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.015" Duration="0:0:0.10" />
+                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.022" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <BackEase EasingMode="EaseOut" Amplitude="0.22" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.022" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <BackEase EasingMode="EaseOut" Amplitude="0.22" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.EnterActions>
                                 <Trigger.ExitActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.16">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.16">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.ExitActions>
@@ -340,11 +369,35 @@
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="0.985" Duration="0:0:0.06" />
-                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="0.985" Duration="0:0:0.06" />
+                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="0.965" Duration="0:0:0.055">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <QuadraticEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="0.965" Duration="0:0:0.055">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <QuadraticEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.17">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <BackEase EasingMode="EaseOut" Amplitude="0.28" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="ButtonChrome" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.17">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <BackEase EasingMode="EaseOut" Amplitude="0.28" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="ButtonChrome" Property="Opacity" Value="0.52" />
@@ -357,39 +410,80 @@
 
         <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="{StaticResource PremiumPrimaryBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="TextElement.Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#0B8A9B" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="18,9" />
         </Style>
 
         <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="{StaticResource DangerSoftBrush}" />
             <Setter Property="BorderBrush" Value="#E3B6B6" />
             <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource DangerBrush}" />
         </Style>
 
         <Style x:Key="ToolbarButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Width" Value="46" />
+            <!-- Flexible secondary action style.
+                 Works for compact icon toolbar buttons and text buttons without clipping. -->
+            <Setter Property="MinWidth" Value="44" />
+            <Setter Property="MinHeight" Value="36" />
             <Setter Property="Height" Value="42" />
-            <Setter Property="Padding" Value="0" />
+            <Setter Property="Padding" Value="13,8" />
             <Setter Property="Margin" Value="0,0,8,0" />
             <Setter Property="Background" Value="{StaticResource PremiumControlBrush}" />
-            <Setter Property="BorderBrush" Value="#C8D8E1" />
+            <Setter Property="BorderBrush" Value="#CFE0E8" />
             <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="280" />
             <Setter Property="ToolTipService.ShowDuration" Value="9000" />
         </Style>
 
+        <Style x:Key="IconToolbarButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarButtonStyle}">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="MinWidth" Value="44" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
         <Style x:Key="ToolbarPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarButtonStyle}">
             <Setter Property="Background" Value="{StaticResource PremiumPrimaryBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#0A94A8" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style x:Key="IconToolbarPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarPrimaryButtonStyle}">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="MinWidth" Value="44" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Padding" Value="0" />
         </Style>
 
         <Style x:Key="ToolbarDangerButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarButtonStyle}">
-            <Setter Property="Background" Value="{StaticResource DangerSoftBrush}" />
-            <Setter Property="BorderBrush" Value="#E3B6B6" />
+            <Setter Property="Background" Value="#FFF3F3" />
+            <Setter Property="BorderBrush" Value="#F0C7C7" />
             <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource DangerBrush}" />
+        </Style>
+
+        <Style x:Key="IconToolbarDangerButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarDangerButtonStyle}">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="MinWidth" Value="44" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style x:Key="SecondaryActionButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarButtonStyle}">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#CFE0E8" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource AccentBrush}" />
         </Style>
 
         <Style x:Key="ToolbarIconPathStyle" TargetType="Path">
@@ -464,31 +558,41 @@
             <Setter Property="Margin" Value="0,0,0,0" />
         </Style>
 
-        <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
+        <!-- Modern thin scrollbar: clear enough for engineering tables, but visually close to web/mobile scrollbars. -->
+        <Style x:Key="ModernScrollBarPageButtonStyle" TargetType="{x:Type RepeatButton}">
             <Setter Property="Focusable" Value="False" />
             <Setter Property="IsTabStop" Value="False" />
-            <Setter Property="MinHeight" Value="56" />
-            <Setter Property="MinWidth" Value="56" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="Thumb">
+                    <ControlTemplate TargetType="{x:Type RepeatButton}">
+                        <Border Background="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ModernScrollBarThumbStyle" TargetType="{x:Type Thumb}">
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="MinWidth" Value="42" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Thumb}">
                         <Border x:Name="ThumbChrome"
-                                Background="#8FA1B2"
-                                CornerRadius="6"
-                                Margin="3"
-                                Opacity="0.92"
+                                Margin="2"
+                                Background="#64748B"
+                                CornerRadius="3"
+                                Opacity="0.42"
                                 SnapsToDevicePixels="True" />
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ThumbChrome" Property="Background" Value="#66798A" />
-                                <Setter TargetName="ThumbChrome" Property="Opacity" Value="1" />
+                                <Setter TargetName="ThumbChrome" Property="Background" Value="#475569" />
+                                <Setter TargetName="ThumbChrome" Property="Opacity" Value="0.68" />
                             </Trigger>
                             <Trigger Property="IsDragging" Value="True">
-                                <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource AccentBrush}" />
-                                <Setter TargetName="ThumbChrome" Property="Opacity" Value="1" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="ThumbChrome" Property="Opacity" Value="0.35" />
+                                <Setter TargetName="ThumbChrome" Property="Background" Value="#07879A" />
+                                <Setter TargetName="ThumbChrome" Property="Opacity" Value="0.88" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -496,91 +600,51 @@
             </Setter>
         </Style>
 
-        <Style x:Key="InvisibleScrollBarButtonStyle" TargetType="RepeatButton">
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="IsTabStop" Value="False" />
+        <Style TargetType="{x:Type ScrollBar}">
+            <!-- Slim web-like scroll indicator: visible enough for engineering tables,
+                 but no heavy desktop rail or arrow buttons. -->
+            <Setter Property="Width" Value="9" />
+            <Setter Property="Height" Value="Auto" />
+            <Setter Property="Background" Value="Transparent" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="RepeatButton">
-                        <Border Background="Transparent" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="ScrollViewer">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="SnapsToDevicePixels" Value="True" />
-        </Style>
-
-        <Style TargetType="ScrollBar">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Width" Value="14" />
-            <Setter Property="MinWidth" Value="14" />
-            <Setter Property="Height" Value="14" />
-            <Setter Property="MinHeight" Value="14" />
-            <Setter Property="Opacity" Value="1" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ScrollBar">
-                        <Grid x:Name="Root"
-                              Width="14"
-                              Background="Transparent"
-                              SnapsToDevicePixels="True">
-                            <Border x:Name="TrackRail"
-                                    Width="10"
-                                    HorizontalAlignment="Center"
-                                    Background="#EEF3F7"
-                                    CornerRadius="6"
-                                    Margin="2"
-                                    Opacity="1" />
+                    <ControlTemplate TargetType="{x:Type ScrollBar}">
+                        <Grid x:Name="Root" Background="Transparent" SnapsToDevicePixels="True">
+                            <Border x:Name="Rail"
+                                    Margin="3"
+                                    Background="#0F172A"
+                                    CornerRadius="4"
+                                    Opacity="0" />
                             <Track x:Name="PART_Track"
-                                   IsDirectionReversed="True">
+                                   IsDirectionReversed="True"
+                                   Orientation="Vertical"
+                                   Focusable="False">
                                 <Track.DecreaseRepeatButton>
-                                    <RepeatButton x:Name="PART_DecreaseButton"
-                                                  Command="ScrollBar.PageUpCommand"
-                                                  Style="{StaticResource InvisibleScrollBarButtonStyle}" />
+                                    <RepeatButton x:Name="DecreasePageButton"
+                                                  Command="{x:Static ScrollBar.PageUpCommand}"
+                                                  Style="{StaticResource ModernScrollBarPageButtonStyle}" />
                                 </Track.DecreaseRepeatButton>
                                 <Track.Thumb>
-                                    <Thumb x:Name="PART_Thumb"
-                                           Style="{StaticResource ScrollBarThumbStyle}"
-                                           Width="14"
-                                           MinHeight="56"
-                                           MinWidth="0" />
+                                    <Thumb Style="{StaticResource ModernScrollBarThumbStyle}" />
                                 </Track.Thumb>
                                 <Track.IncreaseRepeatButton>
-                                    <RepeatButton x:Name="PART_IncreaseButton"
-                                                  Command="ScrollBar.PageDownCommand"
-                                                  Style="{StaticResource InvisibleScrollBarButtonStyle}" />
+                                    <RepeatButton x:Name="IncreasePageButton"
+                                                  Command="{x:Static ScrollBar.PageDownCommand}"
+                                                  Style="{StaticResource ModernScrollBarPageButtonStyle}" />
                                 </Track.IncreaseRepeatButton>
                             </Track>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="Orientation" Value="Horizontal">
-                                <Setter TargetName="Root" Property="Width" Value="Auto" />
-                                <Setter TargetName="Root" Property="Height" Value="14" />
-                                <Setter TargetName="TrackRail" Property="Width" Value="Auto" />
-                                <Setter TargetName="TrackRail" Property="Height" Value="10" />
-                                <Setter TargetName="TrackRail" Property="HorizontalAlignment" Value="Stretch" />
-                                <Setter TargetName="TrackRail" Property="VerticalAlignment" Value="Center" />
-                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
-                                <Setter TargetName="PART_DecreaseButton" Property="Command" Value="ScrollBar.PageLeftCommand" />
-                                <Setter TargetName="PART_IncreaseButton" Property="Command" Value="ScrollBar.PageRightCommand" />
-                                <Setter TargetName="PART_Thumb" Property="Width" Value="Auto" />
-                                <Setter TargetName="PART_Thumb" Property="Height" Value="14" />
-                                <Setter TargetName="PART_Thumb" Property="MinWidth" Value="56" />
-                                <Setter TargetName="PART_Thumb" Property="MinHeight" Value="0" />
                                 <Setter Property="Width" Value="Auto" />
-                                <Setter Property="MinWidth" Value="0" />
-                                <Setter Property="Height" Value="14" />
-                                <Setter Property="MinHeight" Value="14" />
+                                <Setter Property="Height" Value="9" />
+                                <Setter TargetName="PART_Track" Property="Orientation" Value="Horizontal" />
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
+                                <Setter TargetName="DecreasePageButton" Property="Command" Value="{x:Static ScrollBar.PageLeftCommand}" />
+                                <Setter TargetName="IncreasePageButton" Property="Command" Value="{x:Static ScrollBar.PageRightCommand}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TrackRail" Property="Background" Value="#E2EAF0" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.35" />
+                                <Setter TargetName="Rail" Property="Opacity" Value="0.045" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -637,7 +701,17 @@
                                               ContentSource="SelectedContent"
                                               Margin="0"
                                               KeyboardNavigation.TabIndex="2"
-                                              KeyboardNavigation.TabNavigation="Local" />
+                                              KeyboardNavigation.TabNavigation="Local"
+                                              RenderTransformOrigin="0.5,0.5"
+                                              SnapsToDevicePixels="True"
+                                              UseLayoutRounding="True">
+                                <ContentPresenter.RenderTransform>
+                                    <TranslateTransform X="0" />
+                                </ContentPresenter.RenderTransform>
+                                <ContentPresenter.CacheMode>
+                                    <BitmapCache RenderAtScale="1" />
+                                </ContentPresenter.CacheMode>
+                            </ContentPresenter>
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>
@@ -665,9 +739,15 @@
                                         CornerRadius="14"
                                         Margin="4,3"
                                         Opacity="0" />
-                                <ContentPresenter ContentSource="Header"
+                                <ContentPresenter x:Name="HeaderContent"
+                                                  ContentSource="Header"
                                                   HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center" />
+                                                  VerticalAlignment="Center"
+                                                  RenderTransformOrigin="0.5,0.5">
+                                    <ContentPresenter.RenderTransform>
+                                        <ScaleTransform ScaleX="1" ScaleY="1" />
+                                    </ContentPresenter.RenderTransform>
+                                </ContentPresenter>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -679,6 +759,72 @@
                                 <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
                                 <Setter TargetName="HoverHighlight" Property="Opacity" Value="0" />
                             </Trigger>
+                            <EventTrigger RoutedEvent="PreviewMouseLeftButtonDown">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HeaderContent"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                         To="0.91"
+                                                         Duration="0:0:0.045">
+                                            <DoubleAnimation.EasingFunction>
+                                                <QuadraticEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="HeaderContent"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                         To="0.91"
+                                                         Duration="0:0:0.045">
+                                            <DoubleAnimation.EasingFunction>
+                                                <QuadraticEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                            <EventTrigger RoutedEvent="PreviewMouseLeftButtonUp">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HeaderContent"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                         To="1"
+                                                         Duration="0:0:0.16">
+                                            <DoubleAnimation.EasingFunction>
+                                                <BackEase EasingMode="EaseOut" Amplitude="0.24" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="HeaderContent"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                         To="1"
+                                                         Duration="0:0:0.16">
+                                            <DoubleAnimation.EasingFunction>
+                                                <BackEase EasingMode="EaseOut" Amplitude="0.24" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                            <EventTrigger RoutedEvent="MouseLeave">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HeaderContent"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                         To="1"
+                                                         Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="HeaderContent"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                         To="1"
+                                                         Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>

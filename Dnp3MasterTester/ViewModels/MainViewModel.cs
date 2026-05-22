@@ -20,6 +20,7 @@ public sealed class MainViewModel : ViewModelBase
     private const int UiFlushIntervalMs = 250;
     private const int ReportSnapshotIntervalMs = 3000;
     private const int MaxRowsPerFlush = 40;
+    private const int UiTransitionFlushPaddingMs = 40;
     private readonly IDnp3MasterService _service;
     private readonly QuestPdfReportExportService _reportExportService = new();
     private readonly Dictionary<string, PointCatalogEntry> _pointCatalog = new(StringComparer.Ordinal);
@@ -29,12 +30,14 @@ public sealed class MainViewModel : ViewModelBase
     private readonly ConcurrentQueue<LinkTraceEntry> _pendingLinkTrace = new();
     private readonly ConcurrentDictionary<string, ValueViewerRow> _pendingValueRows = new(StringComparer.Ordinal);
     private readonly DispatcherTimer _uiFlushTimer;
+    private readonly DispatcherTimer _transitionFlushTimer;
 
     private string _connectionState = "Idle";
     private string _connectionDetail = "Disconnected";
     private bool _isBusy;
     private bool _isBufferedCollectionUpdate;
     private bool _hasBufferedWorkspaceChanges;
+    private DateTime _heavyUiFlushSuspendedUntilUtc = DateTime.MinValue;
     private DateTime _lastReportSnapshotAt = DateTime.MinValue;
     private PointCatalogProfile? _selectedPointCatalogProfile;
     private PointCatalogEntry? _selectedPointCatalogEntry;
@@ -158,6 +161,17 @@ public sealed class MainViewModel : ViewModelBase
             Interval = TimeSpan.FromMilliseconds(UiFlushIntervalMs)
         };
         _uiFlushTimer.Tick += (_, _) => FlushBufferedTelemetry();
+
+        _transitionFlushTimer = new DispatcherTimer(DispatcherPriority.Background);
+        _transitionFlushTimer.Tick += (_, _) =>
+        {
+            _transitionFlushTimer.Stop();
+            if (!IsHeavyUiFlushSuspended)
+            {
+                FlushBufferedTelemetry();
+            }
+        };
+
         _uiFlushTimer.Start();
     }
 
@@ -400,7 +414,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         get
         {
-            var row = EventLogs.FirstOrDefault();
+            var row = EventLogs.LastOrDefault();
             if (row is null)
             {
                 return "No SCADA events captured yet.";
@@ -415,13 +429,13 @@ public sealed class MainViewModel : ViewModelBase
     {
         get
         {
-            var row = SoeAudit.FirstOrDefault();
+            var row = SoeAudit.LastOrDefault();
             return row is null
                 ? "No SOE callbacks captured yet."
                 : $"{row.SourceTimestampText} - {row.PointLabel} = {row.Value}";
         }
     }
-    public string LatestTraceSummary => LinkTrace.FirstOrDefault()?.Summary ?? "No protocol trace records yet.";
+    public string LatestTraceSummary => LinkTrace.LastOrDefault()?.Summary ?? "No protocol trace records yet.";
 
     public RelayCommand ConnectCommand { get; }
     public RelayCommand DisconnectCommand { get; }
@@ -563,7 +577,7 @@ public sealed class MainViewModel : ViewModelBase
             var detail = string.Join(" ", validationErrors);
             ConnectionState = "Invalid Settings";
             ConnectionDetail = detail;
-            InsertTop(EventLogs, new EventLogEntry
+            AppendBottom(EventLogs, new EventLogEntry
             {
                 TimestampLocal = DateTime.Now,
                 EventType = "Validation Error",
@@ -587,7 +601,7 @@ public sealed class MainViewModel : ViewModelBase
         var operation = SelectedBinaryOperation;
         var preparedAt = DateTime.Now;
 
-        InsertTop(EventLogs, new EventLogEntry
+        AppendBottom(EventLogs, new EventLogEntry
         {
             TimestampLocal = preparedAt,
             EventType = "Command Prepared",
@@ -621,7 +635,7 @@ public sealed class MainViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            InsertTop(EventLogs, new EventLogEntry
+            AppendBottom(EventLogs, new EventLogEntry
             {
                 TimestampLocal = DateTime.Now,
                 EventType = "UI Error",
@@ -710,12 +724,47 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    private static void AppendBottom<T>(ObservableCollection<T> items, T item)
+    {
+        items.Add(item);
+        while (items.Count > MaxRows)
+        {
+            items.RemoveAt(0);
+        }
+    }
+
+    public void SuspendHeavyUiFlush(TimeSpan duration)
+    {
+        if (duration <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        var untilUtc = DateTime.UtcNow.Add(duration);
+        if (untilUtc > _heavyUiFlushSuspendedUntilUtc)
+        {
+            _heavyUiFlushSuspendedUntilUtc = untilUtc;
+        }
+
+        _transitionFlushTimer.Stop();
+        _transitionFlushTimer.Interval = duration + TimeSpan.FromMilliseconds(UiTransitionFlushPaddingMs);
+        _transitionFlushTimer.Start();
+    }
+
+    private bool IsHeavyUiFlushSuspended => DateTime.UtcNow < _heavyUiFlushSuspendedUntilUtc;
+
     private void FlushBufferedTelemetry()
     {
         if (Application.Current?.Dispatcher.HasShutdownStarted == true ||
             Application.Current?.Dispatcher.HasShutdownFinished == true)
         {
             _uiFlushTimer.Stop();
+            _transitionFlushTimer.Stop();
+            return;
+        }
+
+        if (IsHeavyUiFlushSuspended)
+        {
             return;
         }
 
@@ -755,9 +804,9 @@ public sealed class MainViewModel : ViewModelBase
         }
 
         _lastReportSnapshotAt = now;
-        ReplaceSnapshot(ReportEvents, EventLogs.Take(8));
-        ReplaceSnapshot(ReportSoeEvents, SoeAudit.Take(8));
-        ReplaceSnapshot(ReportTraceEntries, LinkTrace.Take(6));
+        ReplaceSnapshot(ReportEvents, TakeLatest(EventLogs, 8));
+        ReplaceSnapshot(ReportSoeEvents, TakeLatest(SoeAudit, 8));
+        ReplaceSnapshot(ReportTraceEntries, TakeLatest(LinkTrace, 6));
         RefreshReportSnapshot(force: false);
     }
 
@@ -775,9 +824,9 @@ public sealed class MainViewModel : ViewModelBase
 
         if (force)
         {
-            ReplaceSnapshot(ReportEvents, EventLogs.Take(8));
-            ReplaceSnapshot(ReportSoeEvents, SoeAudit.Take(8));
-            ReplaceSnapshot(ReportTraceEntries, LinkTrace.Take(6));
+            ReplaceSnapshot(ReportEvents, TakeLatest(EventLogs, 8));
+            ReplaceSnapshot(ReportSoeEvents, TakeLatest(SoeAudit, 8));
+            ReplaceSnapshot(ReportTraceEntries, TakeLatest(LinkTrace, 6));
         }
 
         ReportSnapshot = FatReportSnapshotBuilder.Build(
@@ -811,7 +860,7 @@ public sealed class MainViewModel : ViewModelBase
         RefreshReportSnapshot(force: true);
         RenderReportPreview(refreshSnapshot: false);
         ReportWorkspaceStage = ReportWorkspaceStage.Preview;
-        InsertTop(EventLogs, new EventLogEntry
+        AppendBottom(EventLogs, new EventLogEntry
         {
             TimestampLocal = DateTime.Now,
             EventType = "Report Finalized",
@@ -828,7 +877,7 @@ public sealed class MainViewModel : ViewModelBase
         RefreshReportSnapshot(force: true);
         ReportWorkspaceStage = ReportWorkspaceStage.Identity;
         ReportPreviewStatus = "Report reopened for editing. Render preview after reviewing setup and testing.";
-        InsertTop(EventLogs, new EventLogEntry
+        AppendBottom(EventLogs, new EventLogEntry
         {
             TimestampLocal = DateTime.Now,
             EventType = "Report Reopened",
@@ -853,7 +902,7 @@ public sealed class MainViewModel : ViewModelBase
         catch (Exception ex)
         {
             ReportPreviewStatus = $"PDF preview failed: {ex.Message}";
-            InsertTop(EventLogs, new EventLogEntry
+            AppendBottom(EventLogs, new EventLogEntry
             {
                 TimestampLocal = DateTime.Now,
                 EventType = "Report Preview Error",
@@ -874,7 +923,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private Task RunAutomatedReportTestingAsync() => RunBusyAsync(async () =>
     {
-        InsertTop(EventLogs, new EventLogEntry
+        AppendBottom(EventLogs, new EventLogEntry
         {
             TimestampLocal = DateTime.Now,
             EventType = "Automated FAT Test Started",
@@ -893,7 +942,7 @@ public sealed class MainViewModel : ViewModelBase
         RefreshReportSnapshot(force: true);
         ReportWorkspaceStage = ReportWorkspaceStage.Summary;
 
-        InsertTop(EventLogs, new EventLogEntry
+        AppendBottom(EventLogs, new EventLogEntry
         {
             TimestampLocal = DateTime.Now,
             EventType = "Automated FAT Test Completed",
@@ -961,7 +1010,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private Task RunGuidedCommandSequenceStepAsync() => RunBusyAsync(async () =>
     {
-        InsertTop(EventLogs, new EventLogEntry
+        AppendBottom(EventLogs, new EventLogEntry
         {
             TimestampLocal = DateTime.Now,
             EventType = "Guided Command Sequence Started",
@@ -985,7 +1034,7 @@ public sealed class MainViewModel : ViewModelBase
         _manualAssessment.NonOperationRemarks =
             "Automated negative test used the report workflow safety guard: invalid or unmapped non-operation commands are blocked before DNP3 operate is issued, preventing unintended field operation.";
 
-        InsertTop(EventLogs, new EventLogEntry
+        AppendBottom(EventLogs, new EventLogEntry
         {
             TimestampLocal = DateTime.Now,
             EventType = "Non-operation Guard",
@@ -1024,7 +1073,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private Task RunGuidedNonOperationRecoveryStepAsync() => RunBusyAsync(async () =>
     {
-        InsertTop(EventLogs, new EventLogEntry
+        AppendBottom(EventLogs, new EventLogEntry
         {
             TimestampLocal = DateTime.Now,
             EventType = "Guided Non-operation/Recovery Started",
@@ -1072,7 +1121,7 @@ public sealed class MainViewModel : ViewModelBase
 
             _reportExportService.Export(ReportSnapshot, dialog.FileName);
             ReportPreviewPath = dialog.FileName;
-            InsertTop(EventLogs, new EventLogEntry
+            AppendBottom(EventLogs, new EventLogEntry
             {
                 TimestampLocal = DateTime.Now,
                 EventType = "Report Exported",
@@ -1083,7 +1132,7 @@ public sealed class MainViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            InsertTop(EventLogs, new EventLogEntry
+            AppendBottom(EventLogs, new EventLogEntry
             {
                 TimestampLocal = DateTime.Now,
                 EventType = "Report Export Error",
@@ -1175,6 +1224,13 @@ public sealed class MainViewModel : ViewModelBase
         RaiseBrandingChanged();
     }
 
+    private static IEnumerable<T> TakeLatest<T>(IReadOnlyCollection<T> source, int count)
+    {
+        return source.Count <= count
+            ? source
+            : source.Skip(source.Count - count);
+    }
+
     private static void ReplaceSnapshot<T>(ObservableCollection<T> target, IEnumerable<T> source)
     {
         target.Clear();
@@ -1208,7 +1264,7 @@ public sealed class MainViewModel : ViewModelBase
         var count = 0;
         while (count < MaxRowsPerFlush && pending.TryDequeue(out var item))
         {
-            InsertTop(target, transform(item));
+            AppendBottom(target, transform(item));
             changed = true;
             count++;
         }

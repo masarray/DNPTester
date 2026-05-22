@@ -45,143 +45,6 @@
             <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
         </Style>
 
-
-        <!-- Window-level scrollbar override.
-             This is intentionally placed in MainWindow.Resources so it wins over App.xaml.
-             Goal: normal visible web-app style scrollbar, not tiny/noise-like dot. -->
-        <Style x:Key="WindowModernScrollBarButtonStyle" TargetType="{x:Type RepeatButton}">
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="IsTabStop" Value="False" />
-            <Setter Property="OverridesDefaultStyle" Value="True" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type RepeatButton}">
-                        <Border Background="Transparent" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="WindowModernScrollBarThumbStyle" TargetType="{x:Type Thumb}">
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="IsTabStop" Value="False" />
-            <Setter Property="OverridesDefaultStyle" Value="True" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Thumb}">
-                        <Border x:Name="ThumbChrome"
-                                Background="#8E99A8"
-                                BorderBrush="#7B8796"
-                                BorderThickness="1"
-                                CornerRadius="5"
-                                Margin="3,4"
-                                Opacity="0.96"
-                                SnapsToDevicePixels="True" />
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ThumbChrome" Property="Background" Value="#6F7C8C" />
-                                <Setter TargetName="ThumbChrome" Property="BorderBrush" Value="#647182" />
-                                <Setter TargetName="ThumbChrome" Property="Opacity" Value="1" />
-                            </Trigger>
-                            <Trigger Property="IsDragging" Value="True">
-                                <Setter TargetName="ThumbChrome" Property="Background" Value="#566474" />
-                                <Setter TargetName="ThumbChrome" Property="BorderBrush" Value="#4C5968" />
-                                <Setter TargetName="ThumbChrome" Property="Opacity" Value="1" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="ThumbChrome" Property="Opacity" Value="0" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="{x:Type ScrollBar}">
-            <Setter Property="OverridesDefaultStyle" Value="True" />
-            <Setter Property="SnapsToDevicePixels" Value="True" />
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="IsTabStop" Value="False" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Width" Value="16" />
-            <Setter Property="MinWidth" Value="16" />
-            <Setter Property="Height" Value="16" />
-            <Setter Property="MinHeight" Value="16" />
-            <Setter Property="Opacity" Value="1" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ScrollBar}">
-                        <Grid x:Name="Root"
-                              Width="16"
-                              Background="Transparent"
-                              SnapsToDevicePixels="True">
-                            <Border x:Name="TrackRail"
-                                    Width="10"
-                                    HorizontalAlignment="Center"
-                                    Background="#EEF2F6"
-                                    BorderBrush="#DDE5EE"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Opacity="1" />
-                            <Track x:Name="PART_Track"
-                                   Orientation="{TemplateBinding Orientation}"
-                                   IsDirectionReversed="True"
-                                   Focusable="False">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton x:Name="PART_DecreaseButton"
-                                                  Command="ScrollBar.PageUpCommand"
-                                                  Style="{StaticResource WindowModernScrollBarButtonStyle}" />
-                                </Track.DecreaseRepeatButton>
-                                <Track.Thumb>
-                                    <Thumb x:Name="PART_Thumb"
-                                           Width="10"
-                                           Height="72"
-                                           MinWidth="10"
-                                           MinHeight="72"
-                                           Style="{StaticResource WindowModernScrollBarThumbStyle}" />
-                                </Track.Thumb>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton x:Name="PART_IncreaseButton"
-                                                  Command="ScrollBar.PageDownCommand"
-                                                  Style="{StaticResource WindowModernScrollBarButtonStyle}" />
-                                </Track.IncreaseRepeatButton>
-                            </Track>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="Orientation" Value="Horizontal">
-                                <Setter TargetName="Root" Property="Width" Value="Auto" />
-                                <Setter TargetName="Root" Property="Height" Value="16" />
-                                <Setter TargetName="TrackRail" Property="Width" Value="Auto" />
-                                <Setter TargetName="TrackRail" Property="Height" Value="10" />
-                                <Setter TargetName="TrackRail" Property="HorizontalAlignment" Value="Stretch" />
-                                <Setter TargetName="TrackRail" Property="VerticalAlignment" Value="Center" />
-                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
-                                <Setter TargetName="PART_DecreaseButton" Property="Command" Value="ScrollBar.PageLeftCommand" />
-                                <Setter TargetName="PART_IncreaseButton" Property="Command" Value="ScrollBar.PageRightCommand" />
-                                <Setter TargetName="PART_Thumb" Property="Width" Value="72" />
-                                <Setter TargetName="PART_Thumb" Property="Height" Value="10" />
-                                <Setter TargetName="PART_Thumb" Property="MinWidth" Value="72" />
-                                <Setter TargetName="PART_Thumb" Property="MinHeight" Value="10" />
-                                <Setter Property="Width" Value="Auto" />
-                                <Setter Property="MinWidth" Value="0" />
-                                <Setter Property="Height" Value="16" />
-                                <Setter Property="MinHeight" Value="16" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TrackRail" Property="Background" Value="#E5EBF2" />
-                                <Setter TargetName="TrackRail" Property="BorderBrush" Value="#CDD8E4" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="TrackRail" Property="Opacity" Value="0" />
-                                <Setter Property="Opacity" Value="0" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
     </Window.Resources>
     <Grid Background="{StaticResource AppBackgroundGradient}">
         <Grid.RowDefinitions>
@@ -424,7 +287,8 @@
                                             <RowDefinition Height="*" />
                                         </Grid.RowDefinitions>
                                         <TextBlock Text="Recent SCADA Events" Style="{StaticResource SectionTitleStyle}" />
-                                        <DataGrid Grid.Row="1"
+                                        <DataGrid x:Name="MissionEventLogGrid"
+                                                  Grid.Row="1"
                                                   Margin="0,12,0,0"
                                                   ItemsSource="{Binding EventLogs}"
                                                   AutoGenerateColumns="False"
@@ -1306,7 +1170,7 @@
                 </TabItem>
 
                 <TabItem Header="SCADA Events">
-                    <DataGrid Margin="0,14,0,0" ItemsSource="{Binding EventLogs}" AutoGenerateColumns="False" IsReadOnly="True" SelectionUnit="FullRow" SelectionMode="Single">
+                    <DataGrid x:Name="ScadaEventsGrid" Margin="0,14,0,0" ItemsSource="{Binding EventLogs}" AutoGenerateColumns="False" IsReadOnly="True" SelectionUnit="FullRow" SelectionMode="Single">
                         <DataGrid.Columns>
                             <DataGridTextColumn Binding="{Binding EventTimestampLocal, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}" Header="Event Time" Width="190" ElementStyle="{StaticResource GridTextCenterStyle}" />
                             <DataGridTextColumn Binding="{Binding EventTimestampBasis}" Header="Time Basis" Width="90" ElementStyle="{StaticResource GridTextCenterStyle}" />
@@ -1324,7 +1188,7 @@
                 </TabItem>
 
                 <TabItem Header="SOE Audit">
-                    <DataGrid Margin="0,14,0,0" ItemsSource="{Binding SoeAudit}" AutoGenerateColumns="False" IsReadOnly="True" SelectionUnit="FullRow" SelectionMode="Single">
+                    <DataGrid x:Name="SoeAuditGrid" Margin="0,14,0,0" ItemsSource="{Binding SoeAudit}" AutoGenerateColumns="False" IsReadOnly="True" SelectionUnit="FullRow" SelectionMode="Single">
                         <DataGrid.Columns>
                             <DataGridTextColumn Binding="{Binding ReceivedAtLocal, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}" Header="Captured At" Width="190" ElementStyle="{StaticResource GridTextCenterStyle}" />
                             <DataGridTextColumn Binding="{Binding SourceTimestampText}" Header="Source Timestamp" Width="190" ElementStyle="{StaticResource GridTextCenterStyle}" />
@@ -1347,7 +1211,7 @@
                 </TabItem>
 
                 <TabItem Header="Link Trace">
-                    <DataGrid Margin="0,14,0,0" ItemsSource="{Binding LinkTrace}" AutoGenerateColumns="False" IsReadOnly="True" SelectionUnit="FullRow" SelectionMode="Single">
+                    <DataGrid x:Name="LinkTraceGrid" Margin="0,14,0,0" ItemsSource="{Binding LinkTrace}" AutoGenerateColumns="False" IsReadOnly="True" SelectionUnit="FullRow" SelectionMode="Single">
                         <DataGrid.Columns>
                             <DataGridTextColumn Binding="{Binding TimestampLocal, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}" Header="Timestamp" Width="190" ElementStyle="{StaticResource GridTextCenterStyle}" />
                             <DataGridTextColumn Binding="{Binding Direction}" Header="Channel" Width="110" ElementStyle="{StaticResource GridTextCenterStyle}" />

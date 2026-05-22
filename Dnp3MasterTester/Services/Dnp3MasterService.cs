@@ -35,6 +35,28 @@ public sealed class Dnp3MasterService : IDnp3MasterService
 
     public bool IsConnected { get; private set; }
 
+    public bool HasDeviceResponse
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _hasDeviceResponse;
+            }
+        }
+    }
+
+    public bool IsOperationalReady
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return IsConnected && _hasDeviceResponse;
+            }
+        }
+    }
+
     public async Task ConnectAsync(ConnectionSettings settings, CancellationToken cancellationToken = default)
     {
         var profile = BuildPollingProfile(settings);
@@ -125,6 +147,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
                     _runtime = null;
                     _activeSettings = null;
                     IsConnected = false;
+                    _hasDeviceResponse = false;
                     CancelCommandFeedbackTimeout();
                 }
             }
@@ -211,17 +234,24 @@ public sealed class Dnp3MasterService : IDnp3MasterService
     {
         MasterChannel? channel;
         AssociationId? association;
+        bool isOperationalReady;
         CommandTransaction transaction;
 
         lock (_sync)
         {
             channel = _channel;
             association = _association;
+            isOperationalReady = IsConnected && _hasDeviceResponse;
         }
 
         if (channel is null || association is null)
         {
             throw new InvalidOperationException("DNP3 master is not connected.");
+        }
+
+        if (!isOperationalReady)
+        {
+            throw new InvalidOperationException("DNP3 outstation has not responded yet. Run Link Status or Integrity Poll before operating a command.");
         }
 
         var commandText = $"{mode} {operation} index={index}";
@@ -760,7 +790,10 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             current = _latestCommandTransaction;
         }
 
-        var timeoutSeconds = Math.Max(1, (current?.CorrelationWindowMs ?? ((_activeSettings?.RequestTimeoutSeconds ?? 5) * 1000)) / 1000);
+        var timeoutMs = Math.Max(250, current?.CorrelationWindowMs ?? ((_activeSettings?.RequestTimeoutSeconds ?? 5) * 1000));
+        var timeoutText = timeoutMs >= 1000 && timeoutMs % 1000 == 0
+            ? $"{timeoutMs / 1000} seconds"
+            : $"{timeoutMs} ms";
         var cts = new CancellationTokenSource();
 
         lock (_commandSync)
@@ -774,11 +807,11 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cts.Token);
+                await Task.Delay(TimeSpan.FromMilliseconds(timeoutMs), cts.Token);
                 AppendCommandLifecycle(
                     transactionId,
                     "Feedback Timeout",
-                    $"No command feedback was observed within {timeoutSeconds} seconds.",
+                    $"No command feedback was observed within {timeoutText}.",
                     update =>
                     {
                         if (update.IsTerminal || update.FeedbackAtLocal.HasValue || update.FinalVerdict is "Success" or "Rejected" or "Feedback Mismatch")
@@ -845,14 +878,9 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             return;
         }
 
-        if (sourceTimestamp.LocalTime.HasValue && sourceTimestamp.LocalTime.Value < current.RequestedAtLocal.Value)
-        {
-            return;
-        }
-
-        var allowedWindow = TimeSpan.FromMilliseconds(current.CorrelationWindowMs ?? ((Math.Max(1, _activeSettings?.RequestTimeoutSeconds ?? 5) + 2) * 1000));
-        var observedAt = sourceTimestamp.LocalTime ?? DateTime.Now;
-        if (observedAt - current.RequestedAtLocal.Value > allowedWindow)
+        var receivedAt = DateTime.Now;
+        var allowedWindow = TimeSpan.FromMilliseconds(Math.Max(250, current.CorrelationWindowMs ?? ((Math.Max(1, _activeSettings?.RequestTimeoutSeconds ?? 5) + 2) * 1000)));
+        if (receivedAt - current.RequestedAtLocal.Value > allowedWindow)
         {
             return;
         }
@@ -874,11 +902,11 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             BuildFeedbackLifecycleDetail(evidenceKind, value, expectedValue, status),
             update => update with
             {
-                FeedbackAtLocal = observedAt,
+                FeedbackAtLocal = receivedAt,
                 FeedbackResult = feedbackResult,
                 FeedbackMatched = matched,
                 FeedbackEvidenceKind = evidenceKind,
-                FeedbackLatencyMs = update.RequestedAtLocal.HasValue ? (int)(observedAt - update.RequestedAtLocal.Value).TotalMilliseconds : null,
+                FeedbackLatencyMs = update.RequestedAtLocal.HasValue ? (int)(receivedAt - update.RequestedAtLocal.Value).TotalMilliseconds : null,
                 FinalVerdict = verdict,
                 IsTerminal = true
             });
