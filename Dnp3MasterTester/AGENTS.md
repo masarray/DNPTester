@@ -12,8 +12,8 @@ The product priority is:
 Do not trade protocol correctness for architecture experiments or decorative UI changes.
 
 ## Hard rules for Codex
-- All active DNP3 communication must go through Step Function IO's DNP3 engine only.
-- The active engine for this repository is the official `.NET` DNP3 binding/package (`dnp3`) and its native `dnp3_ffi` runtime payload.
+- Active DNP3 master communication must go through this repository's native C# master stack.
+- Do not add proprietary DNP3 protocol packages back to `Dnp3MasterTester` unless the user explicitly reverses the licensing direction.
 - Analyzer/UI code must remain passive:
   - it may receive callbacks
   - normalize values
@@ -21,16 +21,14 @@ Do not trade protocol correctness for architecture experiments or decorative UI 
   - build SOE audit trails
   - build link trace views
 - Analyzer/UI code must not:
-  - create a custom DNP3 protocol stack
-  - invent link/application framing
-  - parse DNP3 packets with custom wire logic as a replacement for the engine
-  - fabricate unsolicited/event behavior not emitted by the engine
-  - run an alternate communication routine outside the Step Function engine
-- Prefer official callback data and engine status first.
+  - fabricate unsolicited/event behavior not emitted by the native master stack
+  - guess object values when decoding fails
+  - silently treat malformed frames as valid data
+- Prefer decoded protocol data and explicit unknown/error fields first.
 - If engine data is incomplete, prefer `Unknown` or an empty field over guessing.
 
 ## Working rules for Codex
-- Follow the Step Function DNP3 `.NET` API and example behavior first.
+- Follow IEEE 1815/DNP-UG protocol behavior and the native stack boundaries first.
 - Keep the application operator-facing:
   - `Value Viewer` is the latest point state view
   - `Event Logs SCADA` is operational journaling
@@ -59,20 +57,12 @@ Do not trade protocol correctness for architecture experiments or decorative UI 
 - `C:\Git\DNPTester\Dnp3MasterTester\Models\ConnectionSettings.cs`
 - `C:\Git\DNPTester\Dnp3MasterTester\MainWindow.xaml`
 - `C:\Git\DNPTester\Dnp3MasterTester\MainWindow.xaml.cs`
-- `C:\Git\DNPTester\dnp3-main\ffi\bindings\dotnet\examples\master\Program.cs`
+- `C:\Git\DNPTester\Dnp3MasterTester\Protocol`
 
-## External engine reference
-Local engine reference tree:
-- `C:\Git\DNPTester\dnp3-main`
-
-Use this folder as the source-of-truth reference when:
-- aligning API usage with official examples
-- checking Step Function behavior
-- later migrating from NuGet package consumption to local-source consumption
-
-Important note:
-- the current application uses the official `dnp3` package at build time
-- it is aligned to the Step Function local source tree, but not yet directly built from that tree
+## Protocol reference posture
+Use IEEE 1815/DNP-UG materials as the source of truth for protocol behavior.
+Permissive public stacks such as OpenDNP3 may inform architecture, but do not
+copy proprietary DNP3 implementation code into this repository.
 
 ## Build command
 Use:
@@ -87,4 +77,3 @@ If protocol/architecture intent is unclear:
 - preserve the current event flow
 - preserve operator-focused outputs
 - prefer minimal invasive changes
-

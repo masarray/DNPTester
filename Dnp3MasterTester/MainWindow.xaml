@@ -1,7 +1,6 @@
 <Window x:Class="Dnp3MasterTester.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
@@ -585,7 +584,7 @@
                                     <TextBlock Text="PDF Engine" Style="{StaticResource EyebrowTextStyle}" />
                                     <TextBlock Margin="0,8,0,0"
                                            Foreground="{StaticResource TextMutedBrush}"
-                                           Text="Preview and export now use the same QuestPDF render path."
+                                           Text="Preview and export now use the same internal PDF render path."
                                            TextWrapping="Wrap" />
                                 </StackPanel>
                             </ScrollViewer>
@@ -1002,7 +1001,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock Text="QuestPDF Print Preview" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                            <TextBlock Text="PDF Print Preview" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
                                             <TextBlock Margin="0,3,0,0" Text="{Binding ReportPreviewStatus}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
                                         <TextBlock Grid.Column="1"
@@ -1012,9 +1011,33 @@
                                                    FontWeight="SemiBold" />
                                     </Grid>
                                 </Border>
-                                <wv2:WebView2 x:Name="ReportPdfViewer"
-                                              Grid.Row="1"
-                                              DefaultBackgroundColor="#FFFEFA" />
+                                <Border Grid.Row="1"
+                                        Margin="24"
+                                        Background="White"
+                                        BorderBrush="#DDE4EC"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="28">
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="560">
+                                        <TextBlock Text="PDF rendered with the internal GPL-3 report engine"
+                                                   FontSize="18"
+                                                   FontWeight="SemiBold"
+                                                   TextAlignment="Center"
+                                                   Foreground="{StaticResource TextPrimaryBrush}" />
+                                        <TextBlock Margin="0,10,0,0"
+                                                   Text="{Binding ReportPreviewPath}"
+                                                   TextAlignment="Center"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{StaticResource TextMutedBrush}" />
+                                        <Button Margin="0,22,0,0"
+                                                Width="180"
+                                                Height="38"
+                                                HorizontalAlignment="Center"
+                                                Style="{StaticResource PrimaryButtonStyle}"
+                                                Command="{Binding OpenRenderedPdfCommand}"
+                                                Content="Open PDF" />
+                                    </StackPanel>
+                                </Border>
                             </Grid>
                         </Border>
                     </Grid>
@@ -1262,9 +1285,9 @@
                                                Foreground="{StaticResource TextMutedBrush}"
                                                TextWrapping="Wrap" />
 
-                                    <TextBlock Margin="0,20,0,0" Text="Third-party DNP3 Engine" Style="{StaticResource SectionTitleStyle}" />
+                                    <TextBlock Margin="0,20,0,0" Text="DNP3 Master Engine" Style="{StaticResource SectionTitleStyle}" />
                                     <TextBlock Margin="0,8,0,0"
-                                               Text="DNP3 protocol functionality is provided by the Step Function I/O dnp3 package. Its package license is a separate non-commercial/non-production license unless a commercial license has been obtained from Step Function I/O."
+                                               Text="DNP3 master protocol functionality is provided by the native C# master stack included with this application. The previous third-party slave simulator and local vendor reference tree have been removed from this repository."
                                                Foreground="{StaticResource TextMutedBrush}"
                                                TextWrapping="Wrap" />
 
@@ -1289,11 +1312,11 @@
                                             <TextBlock Text="Author / maintainer" FontWeight="SemiBold" />
                                             <TextBlock Grid.Column="1" Text="MasArray" TextWrapping="Wrap" />
                                             <TextBlock Grid.Row="1" Margin="0,10,0,0" Text="Application license" FontWeight="SemiBold" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" Text="MIT for this application's own source code, excluding third-party dependencies." TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" Text="GNU General Public License version 3 for this application's own source code, excluding third-party dependencies and system/runtime components." TextWrapping="Wrap" />
                                             <TextBlock Grid.Row="2" Margin="0,10,0,0" Text="DNP3 dependency" FontWeight="SemiBold" />
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,10,0,0" Text="Step Function I/O dnp3 1.7.0-RC1" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,10,0,0" Text="Native C# DNP3 master stack." TextWrapping="Wrap" />
                                             <TextBlock Grid.Row="3" Margin="0,10,0,0" Text="Distribution note" FontWeight="SemiBold" />
-                                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,10,0,0" Text="Do not treat the DNP3 library as MIT/open-source. Verify commercial/production rights before distributing a production installer." TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,10,0,0" Text="Verify remaining NuGet and runtime dependencies before distributing a production bundle." TextWrapping="Wrap" />
                                             <TextBlock Grid.Row="4" Margin="0,10,0,0" Text="Local notices" FontWeight="SemiBold" />
                                             <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,10,0,0" Text="See LICENSE and THIRD-PARTY-NOTICES.md in the repository/build output." TextWrapping="Wrap" />
                                         </Grid>

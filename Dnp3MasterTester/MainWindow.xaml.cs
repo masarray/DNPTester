@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -28,29 +27,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         _viewModel = new MainViewModel();
         DataContext = _viewModel;
-        _viewModel.PropertyChanged += ViewModel_OnPropertyChanged;
         _viewModel.EventLogs.CollectionChanged += (_, e) => OnLiveLogCollectionChanged(e, MissionEventLogGrid, ScadaEventsGrid);
         _viewModel.SoeAudit.CollectionChanged += (_, e) => OnLiveLogCollectionChanged(e, SoeAuditGrid);
         _viewModel.LinkTrace.CollectionChanged += (_, e) => OnLiveLogCollectionChanged(e, LinkTraceGrid);
-        Dispatcher.BeginInvoke(NavigateReportPreview, DispatcherPriority.Loaded);
-    }
-
-    private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(MainViewModel.ReportPreviewPath))
-        {
-            Dispatcher.BeginInvoke(NavigateReportPreview, DispatcherPriority.Background);
-        }
-    }
-
-    private void NavigateReportPreview()
-    {
-        if (string.IsNullOrWhiteSpace(_viewModel.ReportPreviewPath) || !File.Exists(_viewModel.ReportPreviewPath))
-        {
-            return;
-        }
-
-        ReportPdfViewer.Source = new Uri(_viewModel.ReportPreviewPath);
     }
 
     private void OpenConnectionSetup_Click(object sender, RoutedEventArgs e)

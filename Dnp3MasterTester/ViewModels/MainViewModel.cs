@@ -9,7 +9,6 @@ using Dnp3MasterTester.Models;
 using Dnp3MasterTester.Models.Reports;
 using Dnp3MasterTester.Services;
 using Dnp3MasterTester.Services.Reports;
-using dnp3;
 using Microsoft.Win32;
 
 namespace Dnp3MasterTester.ViewModels;
@@ -22,7 +21,7 @@ public sealed class MainViewModel : ViewModelBase
     private const int MaxRowsPerFlush = 40;
     private const int UiTransitionFlushPaddingMs = 40;
     private readonly IDnp3MasterService _service;
-    private readonly QuestPdfReportExportService _reportExportService = new();
+    private readonly InternalPdfReportExportService _reportExportService = new();
     private readonly Dictionary<string, PointCatalogEntry> _pointCatalog = new(StringComparer.Ordinal);
     private readonly JsonSerializerOptions _profileSerializerOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
     private readonly ConcurrentQueue<EventLogEntry> _pendingEventLogs = new();
@@ -103,6 +102,7 @@ public sealed class MainViewModel : ViewModelBase
         ReopenLiveReportCommand = new RelayCommand(_ => ReopenLiveReport(), _ => IsReportFinalized);
         RenderReportPreviewCommand = new RelayCommand(_ => RenderReportPreview());
         ExportReportPdfCommand = new RelayCommand(_ => ExportReportPdf());
+        OpenRenderedPdfCommand = new RelayCommand(_ => OpenRenderedPdf(), _ => File.Exists(ReportPreviewPath));
         EditReportSetupCommand = new RelayCommand(_ => ReportWorkspaceStage = ReportWorkspaceStage.Identity);
         ContinueReportTestingCommand = new RelayCommand(_ => ContinueReportTesting());
         RunAutomatedReportTestingCommand = new RelayCommand(_ => RunAutomatedReportTestingAsync(), _ => !_isBusy && _service.IsConnected);
@@ -453,6 +453,7 @@ public sealed class MainViewModel : ViewModelBase
     public RelayCommand ReopenLiveReportCommand { get; }
     public RelayCommand RenderReportPreviewCommand { get; }
     public RelayCommand ExportReportPdfCommand { get; }
+    public RelayCommand OpenRenderedPdfCommand { get; }
     public RelayCommand SelectCompanyLogoCommand { get; }
     public RelayCommand SelectCustomerLogoCommand { get; }
     public RelayCommand ClearCompanyLogoCommand { get; }
@@ -898,6 +899,7 @@ public sealed class MainViewModel : ViewModelBase
 
             ReportPreviewPath = _reportExportService.RenderPreview(ReportSnapshot);
             ReportPreviewStatus = $"Rendered {Path.GetFileName(ReportPreviewPath)} at {DateTime.Now:HH:mm:ss}.";
+            OpenRenderedPdfCommand.RaiseCanExecuteChanged();
         }
         catch (Exception ex)
         {
@@ -958,6 +960,21 @@ public sealed class MainViewModel : ViewModelBase
         RefreshReportSnapshot(force: true);
         RenderReportPreview(refreshSnapshot: false);
         ReportWorkspaceStage = ReportWorkspaceStage.Preview;
+    }
+
+    private void OpenRenderedPdf()
+    {
+        if (!File.Exists(ReportPreviewPath))
+        {
+            ReportPreviewStatus = "PDF file is not available. Render the preview first.";
+            return;
+        }
+
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = ReportPreviewPath,
+            UseShellExecute = true
+        });
     }
 
     private void GoToReportSummary()
@@ -1121,6 +1138,7 @@ public sealed class MainViewModel : ViewModelBase
 
             _reportExportService.Export(ReportSnapshot, dialog.FileName);
             ReportPreviewPath = dialog.FileName;
+            OpenRenderedPdfCommand.RaiseCanExecuteChanged();
             AppendBottom(EventLogs, new EventLogEntry
             {
                 TimestampLocal = DateTime.Now,

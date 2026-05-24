@@ -9,7 +9,7 @@ public class StatusToBrushConverter : IValueConverter
     {
         if (value == null) return Brushes.Gray;
 
-        string text = value.ToString().ToLower();
+        var text = value.ToString()?.ToLowerInvariant() ?? string.Empty;
 
         if (text.Contains("open"))
             return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#DC2626"));

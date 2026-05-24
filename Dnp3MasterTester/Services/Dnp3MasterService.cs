@@ -1,25 +1,18 @@
 using System.Collections.Concurrent;
 using Dnp3MasterTester.Models;
-using dnp3;
+using Dnp3MasterTester.Protocol;
 
 namespace Dnp3MasterTester.Services;
 
 public sealed class Dnp3MasterService : IDnp3MasterService
 {
     private readonly object _sync = new();
-    private readonly object _fragmentSync = new();
     private readonly object _commandSync = new();
     private readonly ConcurrentDictionary<string, ValueViewerRow> _latestValues = new();
-
-    private Runtime? _runtime;
-    private MasterChannel? _channel;
-    private AssociationId? _association;
-    private PollId? _eventPoll;
+    private Dnp3TransportSession? _session;
     private CancellationTokenSource? _sessionCts;
+    private Task? _eventPollTask;
     private Task? _staticRefreshTask;
-    private bool _loggingConfigured;
-    private FragmentContext _fragmentContext = FragmentContext.Empty;
-    private SourceReason _pendingSourceReason = SourceReason.Unknown;
     private ConnectionSettings? _activeSettings;
     private CommandTransactionState? _latestCommandTransaction;
     private CancellationTokenSource? _commandFeedbackTimeoutCts;
@@ -59,168 +52,87 @@ public sealed class Dnp3MasterService : IDnp3MasterService
 
     public async Task ConnectAsync(ConnectionSettings settings, CancellationToken cancellationToken = default)
     {
-        var profile = BuildPollingProfile(settings);
-
-        await Task.Run(() =>
+        lock (_sync)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            lock (_sync)
+            if (IsConnected)
             {
-                if (IsConnected)
-                {
-                    return;
-                }
-
-                ConfigureLoggingOnce();
-                _activeSettings = settings;
-                _runtime = new Runtime(new RuntimeConfig { NumCoreThreads = 4 });
-                _channel = settings.Transport switch
-                {
-                    DnpTransportType.Serial => MasterChannel.CreateSerialChannel(
-                        _runtime,
-                        GetMasterChannelConfig(settings),
-                        settings.SerialPort,
-                        GetSerialSettings(settings),
-                        settings.GetSerialOpenRetryDelay(),
-                        new PortStateListener(this)),
-                    _ => MasterChannel.CreateTcpChannel(
-                        _runtime,
-                        LinkErrorMode.Close,
-                        GetMasterChannelConfig(settings),
-                        new EndpointList(settings.Endpoint),
-                        new ConnectStrategy(),
-                        new ClientStateListener(this))
-                };
-
-                _association = _channel.AddAssociation(
-                    settings.OutstationAddress,
-                    GetAssociationConfig(profile),
-                    new ReadHandler(this),
-                    new AssociationHandler(),
-                    new AssociationInformation(this));
-
-                _eventPoll = _channel.AddPoll(
-                    _association,
-                    Request.ClassRequest(false, true, true, true),
-                    TimeSpan.FromSeconds(profile.FastEventPollSeconds));
-
-                _sessionCts = new CancellationTokenSource();
-                _channel.Enable();
-                StartStaticRefreshLoop(profile, _channel, _association, _sessionCts.Token);
-                IsConnected = true;
-                _hasDeviceResponse = false;
+                return;
             }
-        }, cancellationToken);
+        }
 
-        RaiseConnection("Transport Open", "DNP3 master channel enabled; waiting for outstation response");
-        WriteEvent("ENGINE", "Session", "Master channel enabled");
+        var profile = BuildPollingProfile(settings);
+        var session = new Dnp3TransportSession(settings, WriteTrace);
+        await session.OpenAsync(cancellationToken);
+        await session.ResetLinkAsync(cancellationToken);
+
+        var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        lock (_sync)
+        {
+            _activeSettings = settings;
+            _session = session;
+            _sessionCts = sessionCts;
+            _hasDeviceResponse = false;
+            IsConnected = true;
+        }
+
+        RaiseConnection("Transport Open", "Native C# DNP3 master transport opened; waiting for outstation response");
+        WriteEvent("ENGINE", "Session", "Native C# DNP3 master enabled");
         WriteEvent(
             "MASTER",
-            "Unsolicited",
-            profile.EnableUnsolicited
-                ? $"Enabled classes={DescribeEventClasses(profile.EnableUnsolicitedClasses)} with fallback event poll {profile.FastEventPollSeconds}s"
-                : $"Disabled; using event poll {profile.FastEventPollSeconds}s");
+            "Polling",
+            profile.EnableAutoEventScan
+                ? $"Event poll active every {profile.FastEventPollSeconds}s"
+                : "Auto event poll disabled");
+
+        if (profile.EnableStartupIntegrity)
+        {
+            _ = Task.Run(() => RunReadAsync(true, true, true, true, Dnp3ReadReason.StartupIntegrity, sessionCts.Token), sessionCts.Token);
+        }
+
+        StartEventPollLoop(profile, sessionCts.Token);
+        StartStaticRefreshLoop(profile, sessionCts.Token);
     }
 
     public async Task DisconnectAsync()
     {
-        await Task.Run(() =>
-        {
-            lock (_sync)
-            {
-                try
-                {
-                    _channel?.Disable();
-                    _sessionCts?.Cancel();
-                    _channel?.Shutdown();
-                    _runtime?.Shutdown();
-                }
-                finally
-                {
-                    _association = null;
-                    _eventPoll = null;
-                    _sessionCts?.Dispose();
-                    _sessionCts = null;
-                    _staticRefreshTask = null;
-                    _channel = null;
-                    _runtime = null;
-                    _activeSettings = null;
-                    IsConnected = false;
-                    _hasDeviceResponse = false;
-                    CancelCommandFeedbackTimeout();
-                }
-            }
-        });
-
-        RaiseConnection("Disconnected", "DNP3 master stopped");
-        WriteEvent("ENGINE", "Session", "Master channel stopped");
-    }
-
-    public Task DemandEventPollAsync()
-    {
-        PollId? poll;
-        MasterChannel? channel;
-
+        Dnp3TransportSession? session;
+        CancellationTokenSource? cts;
         lock (_sync)
         {
-            poll = _eventPoll;
-            channel = _channel;
+            session = _session;
+            cts = _sessionCts;
+            _session = null;
+            _sessionCts = null;
+            _activeSettings = null;
+            _hasDeviceResponse = false;
+            IsConnected = false;
         }
 
-        if (channel is null || poll is null)
+        cts?.Cancel();
+        cts?.Dispose();
+        if (session is not null)
         {
-            return Task.CompletedTask;
+            await session.DisposeAsync();
         }
 
-        SetPendingSourceReason(SourceReason.ManualEventPoll);
-        channel.DemandPoll(poll);
-        WriteEvent("MASTER", "Poll", "Event poll requested");
-        return Task.CompletedTask;
+        _eventPollTask = null;
+        _staticRefreshTask = null;
+        CancelCommandFeedbackTimeout();
+        RaiseConnection("Disconnected", "Native C# DNP3 master stopped");
+        WriteEvent("ENGINE", "Session", "Native C# DNP3 master stopped");
     }
 
-    public async Task RunIntegrityPollAsync()
-    {
-        MasterChannel? channel;
-        AssociationId? association;
+    public Task DemandEventPollAsync() => RunReadAsync(false, true, true, true, Dnp3ReadReason.EventPoll, CancellationToken.None);
 
-        lock (_sync)
-        {
-            channel = _channel;
-            association = _association;
-        }
-
-        if (channel is null || association is null)
-        {
-            return;
-        }
-
-        SetPendingSourceReason(SourceReason.ManualIntegrity);
-        await channel.Read(association, Request.ClassRequest(true, true, true, true));
-        WriteEvent("MASTER", "Poll", "Integrity poll completed");
-        MarkDeviceResponding("DNP3 integrity poll completed with outstation response");
-    }
+    public Task RunIntegrityPollAsync() => RunReadAsync(true, true, true, true, Dnp3ReadReason.ManualIntegrity, CancellationToken.None);
 
     public async Task CheckLinkStatusAsync()
     {
-        MasterChannel? channel;
-        AssociationId? association;
-
-        lock (_sync)
-        {
-            channel = _channel;
-            association = _association;
-        }
-
-        if (channel is null || association is null)
-        {
-            return;
-        }
-
-        var result = await channel.CheckLinkStatus(association);
-        WriteTrace("TX/RX", "Link", $"Check link status result: {result}");
-        WriteEvent("MASTER", "Link", $"Check link status result: {result}");
-        MarkDeviceResponding($"DNP3 link status response received: {result}");
+        var session = GetConnectedSession();
+        using var cts = CreateRequestCts();
+        await session.CheckLinkStatusAsync(cts.Token);
+        MarkDeviceResponding("DNP3 link status response received");
+        WriteEvent("MASTER", "Link", "Link status response received");
     }
 
     public async Task ExecuteBinaryControlAsync(
@@ -232,93 +144,46 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         ushort? expectedFeedbackIndex = null,
         int? correlationWindowMs = null)
     {
-        MasterChannel? channel;
-        AssociationId? association;
-        bool isOperationalReady;
-        CommandTransaction transaction;
-
-        lock (_sync)
-        {
-            channel = _channel;
-            association = _association;
-            isOperationalReady = IsConnected && _hasDeviceResponse;
-        }
-
-        if (channel is null || association is null)
-        {
-            throw new InvalidOperationException("DNP3 master is not connected.");
-        }
-
-        if (!isOperationalReady)
+        if (!IsOperationalReady)
         {
             throw new InvalidOperationException("DNP3 outstation has not responded yet. Run Link Status or Integrity Poll before operating a command.");
         }
 
+        var session = GetConnectedSession();
+        var transaction = StartCommandTransaction(index, mode, operation, preparedAtLocal, expectedFeedbackPointType, expectedFeedbackIndex, correlationWindowMs);
         var commandText = $"{mode} {operation} index={index}";
-        transaction = StartCommandTransaction(index, mode, operation, preparedAtLocal, expectedFeedbackPointType, expectedFeedbackIndex, correlationWindowMs);
-
-        PublishScadaEvent(
-            "Command Requested",
-            mode.ToString(),
-            "Binary Output",
-            index,
-            operation.ToString(),
-            string.Empty,
-            "Pending",
-            "-",
-            SourceReason.CommandResponse,
-            $"Binary control requested: {commandText}");
+        PublishScadaEvent("Command Requested", mode.ToString(), "Binary Output", index, operation.ToString(), string.Empty, "Pending", "-", SourceReason.CommandResponse, $"Binary control requested: {commandText}");
         WriteTrace("TX", "Command", $"Issuing binary control {commandText}");
-        AppendCommandLifecycle(
-            transaction.TransactionId,
-            "Command Requested",
-            $"Binary control requested on {transaction.PointType} {index} using {mode} / {operation}.",
-            update => update with { RequestedAtLocal = DateTime.Now });
+        AppendCommandLifecycle(transaction.TransactionId, "Command Requested", $"Binary control requested on Binary Output {index} using {mode} / {operation}.", update => update with { RequestedAtLocal = DateTime.Now });
 
         try
         {
-            var commands = new CommandSet();
-            commands.AddG12V1U16(index, Group12Var1.FromCode(ControlCode.FromOpType(operation)));
-            await channel.Operate(association, mode, commands);
-            var acceptedAt = DateTime.Now;
+            using var cts = CreateRequestCts();
+            var response = await session.OperateBinaryAsync(index, mode, operation, cts.Token);
+            PublishResponse(response, Dnp3ReadReason.Command);
+            var commandStatus = response.CommandStatuses.LastOrDefault();
+            if (commandStatus is not null && !commandStatus.Status.Contains("Success", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Outstation rejected command: {commandStatus.Status}");
+            }
 
-            PublishScadaEvent(
-                "Command Accepted",
-                mode.ToString(),
-                "Binary Output",
-                index,
-                operation.ToString(),
-                string.Empty,
-                "Accepted",
-                "-",
-                SourceReason.CommandResponse,
-                $"Binary control accepted by master service: {commandText}");
-            WriteTrace("TX", "Command", $"Binary control accepted {commandText}");
+            var acceptedAt = DateTime.Now;
+            PublishScadaEvent("Command Accepted", mode.ToString(), "Binary Output", index, operation.ToString(), string.Empty, "Accepted", "-", SourceReason.CommandResponse, $"Binary control accepted: {commandText}");
             AppendCommandLifecycle(
                 transaction.TransactionId,
                 "Command Accepted",
-                $"Master service accepted binary control {commandText}.",
+                $"Native master accepted binary control {commandText}.",
                 update => update with
                 {
                     AcceptanceAtLocal = acceptedAt,
-                    AcceptanceResult = "Accepted",
+                    AcceptanceResult = commandStatus?.Status ?? "Accepted",
                     AcceptanceLatencyMs = update.RequestedAtLocal.HasValue ? (int)(acceptedAt - update.RequestedAtLocal.Value).TotalMilliseconds : null
                 });
             StartCommandFeedbackTimeout(transaction.TransactionId);
         }
         catch (Exception ex)
         {
-            PublishScadaEvent(
-                "Command Failed",
-                mode.ToString(),
-                "Binary Output",
-                index,
-                operation.ToString(),
-                string.Empty,
-                "Failed",
-                "-",
-                SourceReason.CommandResponse,
-                $"Binary control failed: {commandText}. {ex.Message}");
+            PublishScadaEvent("Command Failed", mode.ToString(), "Binary Output", index, operation.ToString(), string.Empty, "Failed", "-", SourceReason.CommandResponse, $"Binary control failed: {commandText}. {ex.Message}");
             WriteTrace("TX", "Command", $"Binary control failed {commandText}: {ex.Message}");
             CancelCommandFeedbackTimeout();
             AppendCommandLifecycle(
@@ -336,42 +201,107 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         }
     }
 
-    private void ConfigureLoggingOnce()
+    private async Task RunReadAsync(bool class0, bool class1, bool class2, bool class3, Dnp3ReadReason reason, CancellationToken cancellationToken)
     {
-        if (_loggingConfigured)
+        var session = GetConnectedSession();
+        using var timeoutCts = CreateRequestCts(cancellationToken);
+        var response = await session.ReadAsync(class0, class1, class2, class3, timeoutCts.Token);
+        PublishResponse(response, reason);
+        WriteEvent("MASTER", "Poll", $"{reason} read completed");
+        MarkDeviceResponding($"DNP3 {reason} response received");
+    }
+
+    private void PublishResponse(Dnp3ApplicationResponse response, Dnp3ReadReason reason)
+    {
+        foreach (var measurement in response.Measurements)
+        {
+            PublishValue(
+                measurement.PointType,
+                measurement.Index,
+                measurement.Value,
+                measurement.Flags,
+                measurement.Timestamp,
+                measurement.Variation,
+                measurement.Status,
+                measurement.Qualifier,
+                ToSourceReason(reason),
+                reason.ToString());
+        }
+
+        if (response.InternalIndications != 0)
+        {
+            WriteTrace("RX", "IIN", $"Internal indications: 0x{response.InternalIndications:X4}");
+        }
+    }
+
+    private void StartEventPollLoop(PollingProfile profile, CancellationToken cancellationToken)
+    {
+        if (!profile.EnableAutoEventScan || profile.FastEventPollSeconds <= 0)
         {
             return;
         }
 
-        Logging.Configure(new LoggingConfig(), new Logger(this));
-        _loggingConfigured = true;
+        _eventPollTask = Task.Run(async () =>
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(profile.FastEventPollSeconds));
+            try
+            {
+                while (await timer.WaitForNextTickAsync(cancellationToken))
+                {
+                    await RunReadAsync(false, true, true, true, Dnp3ReadReason.EventPoll, cancellationToken);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                WriteTrace("RX", "EventPoll", ex.Message);
+            }
+        }, cancellationToken);
     }
 
-    private static MasterChannelConfig GetMasterChannelConfig(ConnectionSettings settings)
+    private void StartStaticRefreshLoop(PollingProfile profile, CancellationToken cancellationToken)
     {
-        return new MasterChannelConfig(settings.MasterAddress)
-            .WithDecodeLevel(DecodeLevel.Nothing().WithApplication(AppDecodeLevel.ObjectValues));
+        if (!profile.EnableSlowStaticRefresh || profile.StaticRefreshSeconds <= 0)
+        {
+            return;
+        }
+
+        _staticRefreshTask = Task.Run(async () =>
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(profile.StaticRefreshSeconds));
+            try
+            {
+                while (await timer.WaitForNextTickAsync(cancellationToken))
+                {
+                    await RunReadAsync(true, false, false, false, Dnp3ReadReason.StaticRefresh, cancellationToken);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                WriteTrace("RX", "StaticRefresh", ex.Message);
+            }
+        }, cancellationToken);
     }
 
-    private static SerialSettings GetSerialSettings(ConnectionSettings settings)
+    private Dnp3TransportSession GetConnectedSession()
     {
-        return new SerialSettings()
-            .WithBaudRate(settings.SerialBaudRate)
-            .WithDataBits(settings.SerialDataBits)
-            .WithStopBits(settings.SerialStopBits)
-            .WithParity(settings.SerialParity)
-            .WithFlowControl(settings.SerialFlowControl);
+        lock (_sync)
+        {
+            return _session ?? throw new InvalidOperationException("DNP3 master is not connected.");
+        }
     }
 
-    private static AssociationConfig GetAssociationConfig(PollingProfile profile)
+    private CancellationTokenSource CreateRequestCts(CancellationToken cancellationToken = default)
     {
-        return new AssociationConfig(
-                profile.DisableUnsolicitedClasses,
-                profile.EnableUnsolicitedClasses,
-                profile.StartupIntegrityClasses,
-                profile.AutoEventScanClasses)
-            .WithAutoTimeSync(AutoTimeSync.Lan)
-            .WithKeepAliveTimeout(profile.KeepAliveTimeout);
+        var seconds = Math.Max(1, _activeSettings?.RequestTimeoutSeconds ?? 5);
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(seconds));
+        return cts;
     }
 
     private void RaiseConnection(string state, string detail)
@@ -399,17 +329,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         if (shouldPublish)
         {
             RaiseConnection("Device Responding", evidence);
-            PublishScadaEvent(
-                "Device Response",
-                "DNP3",
-                "Outstation",
-                0,
-                "Responding",
-                string.Empty,
-                "Confirmed",
-                "-",
-                SourceReason.Unknown,
-                evidence);
+            PublishScadaEvent("Device Response", "DNP3", "Outstation", 0, "Responding", string.Empty, "Confirmed", "-", SourceReason.Unknown, evidence);
         }
     }
 
@@ -429,30 +349,18 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         });
     }
 
-    private static string DescribeEventClasses(EventClasses classes)
+    private void PublishValue(
+        string pointType,
+        ushort index,
+        string value,
+        string flags,
+        SourceTimestampInfo sourceTimestamp,
+        string source,
+        string status,
+        string qualifier,
+        SourceReason sourceReason,
+        string readType)
     {
-        var values = new List<string>();
-        if (classes.Class1)
-        {
-            values.Add("Class1");
-        }
-
-        if (classes.Class2)
-        {
-            values.Add("Class2");
-        }
-
-        if (classes.Class3)
-        {
-            values.Add("Class3");
-        }
-
-        return values.Count == 0 ? "None" : string.Join("/", values);
-    }
-
-    private void PublishValue(string pointType, ushort index, string value, string flags, SourceTimestampInfo sourceTimestamp, string source, string status = "-", string? qualifier = null)
-    {
-        var fragment = GetFragmentContext();
         var eventClass = ClassifyEvent(pointType);
         var pointKey = $"{pointType}:{index}";
         _latestValues.TryGetValue(pointKey, out var previous);
@@ -469,7 +377,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             SourceTimestampLocal = sourceTimestamp.LocalTime,
             SourceTimestampKind = sourceTimestamp.Kind,
             Source = source,
-            SourceReason = fragment.SourceReason
+            SourceReason = sourceReason
         };
 
         _latestValues.AddOrUpdate(pointKey, row, (_, _) => row);
@@ -480,7 +388,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             ReceivedAtLocal = DateTime.Now,
             SourceTimestampLocal = sourceTimestamp.LocalTime,
             SourceTimestampKind = sourceTimestamp.Kind,
-            ReadType = fragment.ReadType,
+            ReadType = readType,
             EventClass = eventClass,
             PointType = pointType,
             Index = index,
@@ -492,20 +400,19 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             Flags = flags,
             Quality = sourceTimestamp.TimeQuality,
             Variation = source,
-            Qualifier = qualifier ?? fragment.Qualifier,
-            IsBroadcast = fragment.IsBroadcast,
-            SourceReason = fragment.SourceReason,
-            Notes = fragment.Notes
+            Qualifier = qualifier,
+            SourceReason = sourceReason,
+            Notes = "Native C# master decoder"
         });
 
         if (IsBinaryStatePoint(pointType) && previous is not null && !string.Equals(previous.Value, value, StringComparison.Ordinal))
         {
-            PublishScadaEvent("Binary State Change", source, pointType, index, value, previous.Value, flags, sourceTimestamp.TimeQuality, fragment.SourceReason, $"State changed from {previous.Value} to {value}", sourceTimestamp);
+            PublishScadaEvent("Binary State Change", source, pointType, index, value, previous.Value, flags, sourceTimestamp.TimeQuality, sourceReason, $"State changed from {previous.Value} to {value}", sourceTimestamp);
         }
 
-        if (IsBinaryStatePoint(pointType) && previous is null && fragment.SourceReason != SourceReason.StartupIntegrity)
+        if (IsBinaryStatePoint(pointType) && previous is null && sourceReason != SourceReason.StartupIntegrity)
         {
-            PublishScadaEvent("Binary State Initialize", source, pointType, index, value, string.Empty, flags, sourceTimestamp.TimeQuality, fragment.SourceReason, "Initial binary state observed", sourceTimestamp);
+            PublishScadaEvent("Binary State Initialize", source, pointType, index, value, string.Empty, flags, sourceTimestamp.TimeQuality, sourceReason, "Initial binary state observed", sourceTimestamp);
         }
 
         if (pointType.Contains("Command Event", StringComparison.Ordinal))
@@ -529,10 +436,9 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         string detail,
         SourceTimestampInfo? sourceTimestamp = null)
     {
-        var capturedAt = DateTime.Now;
         EventLogReceived?.Invoke(this, new EventLogEntry
         {
-            TimestampLocal = capturedAt,
+            TimestampLocal = DateTime.Now,
             SourceTimestampLocal = sourceTimestamp?.LocalTime,
             SourceTimestampKind = sourceTimestamp?.Kind ?? SourceTimestampKind.NotSupplied,
             EventType = eventType,
@@ -550,26 +456,17 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         });
     }
 
-    private static SourceTimestampInfo BuildSourceTimestamp(Timestamp timestamp)
+    private static SourceReason ToSourceReason(Dnp3ReadReason reason) => reason switch
     {
-        var timeQuality = timestamp.Quality.ToString();
-        return timestamp.Quality switch
-        {
-            TimeQuality.SynchronizedTime => SourceTimestampInfo.Valid(DateTimeOffset.FromUnixTimeMilliseconds((long)timestamp.Value).LocalDateTime, timeQuality),
-            TimeQuality.UnsynchronizedTime => SourceTimestampInfo.Valid(DateTimeOffset.FromUnixTimeMilliseconds((long)timestamp.Value).LocalDateTime, timeQuality),
-            TimeQuality.InvalidTime => SourceTimestampInfo.Invalid(timeQuality),
-            _ => SourceTimestampInfo.Unknown(timeQuality)
-        };
-    }
+        Dnp3ReadReason.StartupIntegrity => SourceReason.StartupIntegrity,
+        Dnp3ReadReason.ManualIntegrity => SourceReason.ManualIntegrity,
+        Dnp3ReadReason.EventPoll => SourceReason.PeriodicEventPoll,
+        Dnp3ReadReason.StaticRefresh => SourceReason.PeriodicStaticRefresh,
+        Dnp3ReadReason.Command => SourceReason.CommandResponse,
+        _ => SourceReason.Unknown
+    };
 
-    private static string FlagText(Flags flags) => flags.Value.ToString();
-
-    private static string QualifierText(HeaderInfo info) => info.Qualifier.ToString();
-
-    private static bool IsBinaryStatePoint(string pointType)
-    {
-        return pointType is "Binary Input" or "Double Bit Binary" or "Binary Output Status";
-    }
+    private static bool IsBinaryStatePoint(string pointType) => pointType is "Binary Input" or "Double Bit Binary" or "Binary Output Status";
 
     private static string ClassifyEvent(string pointType)
     {
@@ -578,18 +475,13 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             return "Command";
         }
 
-        if (IsBinaryStatePoint(pointType))
-        {
-            return "Binary";
-        }
-
-        return "Telemetry";
+        return IsBinaryStatePoint(pointType) ? "Binary" : "Telemetry";
     }
 
     private static PollingProfile BuildPollingProfile(ConnectionSettings settings)
     {
         var definition = settings.GetEffectivePollingProfile();
-        var profile = new PollingProfile(
+        return new PollingProfile(
             definition.Kind,
             definition.FastEventPollSeconds,
             definition.StaticRefreshSeconds,
@@ -598,101 +490,6 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             definition.EnableUnsolicited,
             definition.EnableStartupIntegrity,
             definition.KeepAliveTimeout);
-
-        var disableUnsolicited = profile.EnableUnsolicited ? EventClasses.None() : EventClasses.All();
-        var enableUnsolicited = profile.EnableUnsolicited ? EventClasses.All() : EventClasses.None();
-        var startup = profile.EnableStartupIntegrity ? Classes.All() : Classes.None();
-        var autoEvent = profile.EnableAutoEventScan ? EventClasses.All() : EventClasses.None();
-
-        return profile with
-        {
-            DisableUnsolicitedClasses = disableUnsolicited,
-            EnableUnsolicitedClasses = enableUnsolicited,
-            StartupIntegrityClasses = startup,
-            AutoEventScanClasses = autoEvent
-        };
-    }
-
-    private void StartStaticRefreshLoop(PollingProfile profile, MasterChannel channel, AssociationId association, CancellationToken cancellationToken)
-    {
-        if (!profile.EnableSlowStaticRefresh || profile.StaticRefreshSeconds <= 0)
-        {
-            return;
-        }
-
-        _staticRefreshTask = Task.Run(async () =>
-        {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(profile.StaticRefreshSeconds));
-            try
-            {
-                while (await timer.WaitForNextTickAsync(cancellationToken))
-                {
-                    SetPendingSourceReason(SourceReason.PeriodicStaticRefresh);
-                    await channel.Read(association, Request.ClassRequest(true, false, false, false));
-                    WriteEvent("MASTER", "Poll", "Static refresh completed");
-                }
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        }, cancellationToken);
-    }
-
-    private void SetPendingSourceReason(SourceReason sourceReason)
-    {
-        lock (_fragmentSync)
-        {
-            _pendingSourceReason = sourceReason;
-        }
-    }
-
-    private SourceReason ConsumePendingSourceReason()
-    {
-        lock (_fragmentSync)
-        {
-            var value = _pendingSourceReason;
-            _pendingSourceReason = SourceReason.Unknown;
-            return value;
-        }
-    }
-
-    private static SourceReason ResolveSourceReason(string readType, SourceReason pending)
-    {
-        if (pending != SourceReason.Unknown)
-        {
-            return pending;
-        }
-
-        return readType switch
-        {
-            "StartupIntegrity" => SourceReason.StartupIntegrity,
-            "Unsolicited" => SourceReason.Unsolicited,
-            "PeriodicPoll" => SourceReason.PeriodicEventPoll,
-            _ when readType.Contains("Auto", StringComparison.OrdinalIgnoreCase) => SourceReason.AutoEventScan,
-            _ => SourceReason.Unknown
-        };
-    }
-
-    private FragmentContext GetFragmentContext()
-    {
-        lock (_fragmentSync)
-        {
-            return _fragmentContext;
-        }
-    }
-
-    private void SetFragmentContext(string readType, bool isBroadcast, string qualifier = "", string notes = "")
-    {
-        var sourceReason = ResolveSourceReason(readType, ConsumePendingSourceReason());
-        lock (_fragmentSync)
-        {
-            _fragmentContext = new FragmentContext(readType, isBroadcast, qualifier, sourceReason, notes);
-        }
-    }
-
-    private readonly record struct FragmentContext(string ReadType, bool IsBroadcast, string Qualifier, SourceReason SourceReason, string Notes)
-    {
-        public static FragmentContext Empty { get; } = new("Unknown", false, string.Empty, SourceReason.Unknown, string.Empty);
     }
 
     private CommandTransaction StartCommandTransaction(
@@ -736,12 +533,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             _latestCommandTransaction = state;
         }
 
-        AppendCommandLifecycle(
-            state.TransactionId,
-            "Command Prepared",
-            $"Operator prepared binary control for index {index}: {mode} / {operation}.",
-            update => update);
-
+        AppendCommandLifecycle(state.TransactionId, "Command Prepared", $"Operator prepared binary control for index {index}: {mode} / {operation}.", update => update);
         return ToCommandTransaction(state);
     }
 
@@ -759,17 +551,15 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             var lifecycle = _latestCommandTransaction.Lifecycle;
             if (!lifecycle.Any(x => x.Stage == stage && x.Detail == detail))
             {
-                lifecycle = lifecycle
-                    .Concat(new[]
+                lifecycle = lifecycle.Concat(new[]
+                {
+                    new CommandLifecycleEntry
                     {
-                        new CommandLifecycleEntry
-                        {
-                            TimestampLocal = DateTime.Now,
-                            Stage = stage,
-                            Detail = detail
-                        }
-                    })
-                    .ToArray();
+                        TimestampLocal = DateTime.Now,
+                        Stage = stage,
+                        Detail = detail
+                    }
+                }).ToArray();
             }
 
             _latestCommandTransaction = update(_latestCommandTransaction) with { Lifecycle = lifecycle };
@@ -791,9 +581,6 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         }
 
         var timeoutMs = Math.Max(250, current?.CorrelationWindowMs ?? ((_activeSettings?.RequestTimeoutSeconds ?? 5) * 1000));
-        var timeoutText = timeoutMs >= 1000 && timeoutMs % 1000 == 0
-            ? $"{timeoutMs / 1000} seconds"
-            : $"{timeoutMs} ms";
         var cts = new CancellationTokenSource();
 
         lock (_commandSync)
@@ -811,21 +598,15 @@ public sealed class Dnp3MasterService : IDnp3MasterService
                 AppendCommandLifecycle(
                     transactionId,
                     "Feedback Timeout",
-                    $"No command feedback was observed within {timeoutText}.",
-                    update =>
-                    {
-                        if (update.IsTerminal || update.FeedbackAtLocal.HasValue || update.FinalVerdict is "Success" or "Rejected" or "Feedback Mismatch")
-                        {
-                            return update;
-                        }
-
-                        return update with
+                    $"No command feedback was observed within {timeoutMs} ms.",
+                    update => update.IsTerminal || update.FeedbackAtLocal.HasValue
+                        ? update
+                        : update with
                         {
                             FeedbackResult = "Timeout",
                             FinalVerdict = "Accepted but no feedback",
                             IsTerminal = true
-                        };
-                    });
+                        });
             }
             catch (OperationCanceledException)
             {
@@ -857,7 +638,7 @@ public sealed class Dnp3MasterService : IDnp3MasterService
             current = _latestCommandTransaction;
         }
 
-        if (current is null || current.IsTerminal || current.FeedbackAtLocal.HasValue)
+        if (current is null || current.IsTerminal || current.FeedbackAtLocal.HasValue || current.RequestedAtLocal is null)
         {
             return;
         }
@@ -866,14 +647,9 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         var expectedPointType = current.ExpectedFeedbackPointType ?? current.PointType;
         var expectedPointIndex = current.ExpectedFeedbackIndex ?? current.PointIndex;
         var isConfiguredFeedbackPoint = string.Equals(pointType, expectedPointType, StringComparison.OrdinalIgnoreCase) && index == expectedPointIndex;
-        var isCommandEventFallback = !hasConfiguredFeedback && IsCommandEventPoint(pointType) && index == current.PointIndex;
+        var isCommandEventFallback = !hasConfiguredFeedback && pointType.Contains("Command Event", StringComparison.OrdinalIgnoreCase) && index == current.PointIndex;
 
         if (!isConfiguredFeedbackPoint && !isCommandEventFallback)
-        {
-            return;
-        }
-
-        if (current.RequestedAtLocal is null)
         {
             return;
         }
@@ -886,20 +662,21 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         }
 
         var expectedValue = GetExpectedBinaryValue(current.Operation);
-        var isCommandEvent = IsCommandEventPoint(pointType);
-        var evidenceKind = ResolveFeedbackEvidenceKind(isCommandEvent, pointType, previousValue, value);
-        var statusIndicatesFailure = isCommandEvent && !IsPositiveCommandStatus(status);
+        var evidenceKind = pointType.Contains("Command Event", StringComparison.OrdinalIgnoreCase)
+            ? CommandFeedbackEvidenceKind.CommandEvent
+            : ResolveFeedbackEvidenceKind(pointType, previousValue, value);
+        var statusIndicatesFailure = evidenceKind == CommandFeedbackEvidenceKind.CommandEvent && !IsPositiveCommandStatus(status);
         var matched = string.Equals(value, expectedValue, StringComparison.OrdinalIgnoreCase) && !statusIndicatesFailure;
-        var feedbackResult = isCommandEvent
-            ? $"Command Event: {value} / {status}"
-            : $"Status Feedback: {value}";
+        var feedbackResult = evidenceKind == CommandFeedbackEvidenceKind.CommandEvent ? $"Command Event: {value} / {status}" : $"Status Feedback: {value}";
         var verdict = matched ? "Success" : "Feedback Mismatch";
 
         CancelCommandFeedbackTimeout();
         AppendCommandLifecycle(
             current.TransactionId,
             matched ? "Feedback Matched" : "Feedback Mismatch",
-            BuildFeedbackLifecycleDetail(evidenceKind, value, expectedValue, status),
+            evidenceKind == CommandFeedbackEvidenceKind.CommandEvent
+                ? $"Command-event feedback reported {value} with status {status}; expected {expectedValue}."
+                : $"Configured feedback point read as {value}, expected {expectedValue}.",
             update => update with
             {
                 FeedbackAtLocal = receivedAt,
@@ -910,56 +687,20 @@ public sealed class Dnp3MasterService : IDnp3MasterService
                 FinalVerdict = verdict,
                 IsTerminal = true
             });
-
-        AppendCommandLifecycle(
-            current.TransactionId,
-            "Transaction Completed",
-            $"Command transaction completed with verdict: {verdict}.",
-            update => update);
+        AppendCommandLifecycle(current.TransactionId, "Transaction Completed", $"Command transaction completed with verdict: {verdict}.", update => update);
     }
 
-    private static bool IsCommandEventPoint(string pointType)
+    private static bool IsPositiveCommandStatus(string status) => string.IsNullOrWhiteSpace(status) || status == "-" || status.Contains("Success", StringComparison.OrdinalIgnoreCase);
+
+    private static string GetExpectedBinaryValue(string operation) => operation switch
     {
-        return pointType.Contains("Command Event", StringComparison.OrdinalIgnoreCase);
-    }
+        nameof(OpType.LatchOn) or nameof(OpType.PulseOn) => bool.TrueString,
+        nameof(OpType.LatchOff) or nameof(OpType.PulseOff) => bool.FalseString,
+        _ => string.Empty
+    };
 
-    private static bool IsPositiveCommandStatus(string status)
+    private static CommandFeedbackEvidenceKind ResolveFeedbackEvidenceKind(string pointType, ValueViewerRow? latestValue, string value)
     {
-        if (string.IsNullOrWhiteSpace(status) || status == "-")
-        {
-            return true;
-        }
-
-        return status.Contains("Success", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string BuildFeedbackLifecycleDetail(CommandFeedbackEvidenceKind evidenceKind, string value, string expectedValue, string status)
-    {
-        return evidenceKind switch
-        {
-            CommandFeedbackEvidenceKind.CommandEvent => $"Command-event feedback reported {value} with status {status}; expected {expectedValue}.",
-            CommandFeedbackEvidenceKind.StatusChange => $"Configured feedback point changed to {value}, expected {expectedValue}.",
-            _ => $"Configured feedback point read as {value}, expected {expectedValue} (simple rule)."
-        };
-    }
-
-    private static string GetExpectedBinaryValue(string operation)
-    {
-        return operation switch
-        {
-            nameof(OpType.LatchOn) or nameof(OpType.PulseOn) => bool.TrueString,
-            nameof(OpType.LatchOff) or nameof(OpType.PulseOff) => bool.FalseString,
-            _ => string.Empty
-        };
-    }
-
-    private static CommandFeedbackEvidenceKind ResolveFeedbackEvidenceKind(bool isCommandEvent, string pointType, ValueViewerRow? latestValue, string value)
-    {
-        if (isCommandEvent)
-        {
-            return CommandFeedbackEvidenceKind.CommandEvent;
-        }
-
         if ((pointType == "Binary Output Status" || pointType == "Binary Input") && latestValue is not null && !string.Equals(latestValue.Value, value, StringComparison.OrdinalIgnoreCase))
         {
             return CommandFeedbackEvidenceKind.StatusChange;
@@ -1026,192 +767,5 @@ public sealed class Dnp3MasterService : IDnp3MasterService
         bool EnableAutoEventScan,
         bool EnableUnsolicited,
         bool EnableStartupIntegrity,
-        TimeSpan KeepAliveTimeout)
-    {
-        public EventClasses DisableUnsolicitedClasses { get; init; } = EventClasses.None();
-        public EventClasses EnableUnsolicitedClasses { get; init; } = EventClasses.None();
-        public Classes StartupIntegrityClasses { get; init; } = Classes.All();
-        public EventClasses AutoEventScanClasses { get; init; } = EventClasses.None();
-    }
-
-    private sealed class Logger(Dnp3MasterService owner) : ILogger
-    {
-        public void OnMessage(LogLevel level, string message)
-        {
-            owner.WriteTrace("TRACE", level.ToString(), message.Trim());
-        }
-    }
-
-    private sealed class ClientStateListener(Dnp3MasterService owner) : IClientStateListener
-    {
-        public void OnChange(ClientState state)
-        {
-            owner.RaiseConnection(state.ToString(), $"Client state changed to {state}");
-            owner.WriteEvent("CHANNEL", "ClientState", state.ToString());
-        }
-    }
-
-    private sealed class PortStateListener(Dnp3MasterService owner) : IPortStateListener
-    {
-        public void OnChange(PortState state)
-        {
-            owner.RaiseConnection(state.ToString(), $"Port state changed to {state}");
-            owner.WriteEvent("CHANNEL", "PortState", state.ToString());
-        }
-    }
-
-    private sealed class AssociationHandler : IAssociationHandler
-    {
-        public UtcTimestamp GetCurrentTime()
-        {
-            return UtcTimestamp.Valid((ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-        }
-    }
-
-    private sealed class AssociationInformation(Dnp3MasterService owner) : IAssociationInformation
-    {
-        public void TaskStart(TaskType taskType, FunctionCode fc, byte seq)
-        {
-            owner.WriteEvent("ASSOC", "TaskStart", $"{taskType} / {fc} seq={seq}");
-        }
-
-        public void TaskSuccess(TaskType taskType, FunctionCode fc, byte seq)
-        {
-            owner.MarkDeviceResponding($"DNP3 task succeeded: {taskType} / {fc} seq={seq}");
-            owner.WriteEvent("ASSOC", "TaskSuccess", $"{taskType} / {fc} seq={seq}");
-        }
-
-        public void TaskFail(TaskType taskType, TaskError error)
-        {
-            owner.WriteEvent("ASSOC", "TaskFail", $"{taskType} failed: {error}");
-        }
-
-        public void UnsolicitedResponse(bool isDuplicate, byte seq)
-        {
-            owner.WriteEvent("ASSOC", "Unsolicited", $"duplicate={isDuplicate} seq={seq}");
-        }
-    }
-
-    private sealed class ReadHandler(Dnp3MasterService owner) : IReadHandler
-    {
-        public void BeginFragment(ReadType readType, ResponseHeader header)
-        {
-            owner.MarkDeviceResponding($"DNP3 response fragment received: {readType} IIN={header.Iin}");
-            owner.SetFragmentContext(readType.ToString(), header.Iin.Iin1.Broadcast, notes: $"Fragment start IIN={header.Iin}");
-            owner.WriteEvent("READ", "BeginFragment", $"{readType} broadcast={header.Iin.Iin1.Broadcast}");
-        }
-
-        public void EndFragment(ReadType readType, ResponseHeader header)
-        {
-            owner.SetFragmentContext(readType.ToString(), header.Iin.Iin1.Broadcast, notes: "Fragment completed");
-            owner.WriteEvent("READ", "EndFragment", readType.ToString());
-        }
-
-        public void HandleBinaryInput(HeaderInfo info, ICollection<BinaryInput> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Binary Input", value.Index, value.Value.ToString(), FlagText(value.Flags), BuildSourceTimestamp(value.Time), info.Variation.ToString(), qualifier: QualifierText(info));
-            }
-        }
-
-        public void HandleDoubleBitBinaryInput(HeaderInfo info, ICollection<DoubleBitBinaryInput> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Double Bit Binary", value.Index, value.Value.ToString(), FlagText(value.Flags), BuildSourceTimestamp(value.Time), info.Variation.ToString(), qualifier: QualifierText(info));
-            }
-        }
-
-        public void HandleBinaryOutputStatus(HeaderInfo info, ICollection<BinaryOutputStatus> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Binary Output Status", value.Index, value.Value.ToString(), FlagText(value.Flags), BuildSourceTimestamp(value.Time), info.Variation.ToString(), qualifier: QualifierText(info));
-            }
-        }
-
-        public void HandleCounter(HeaderInfo info, ICollection<Counter> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Counter", value.Index, value.Value.ToString(), FlagText(value.Flags), BuildSourceTimestamp(value.Time), info.Variation.ToString(), qualifier: QualifierText(info));
-            }
-        }
-
-        public void HandleFrozenCounter(HeaderInfo info, ICollection<FrozenCounter> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Frozen Counter", value.Index, value.Value.ToString(), FlagText(value.Flags), BuildSourceTimestamp(value.Time), info.Variation.ToString(), qualifier: QualifierText(info));
-            }
-        }
-
-        public void HandleAnalogInput(HeaderInfo info, ICollection<AnalogInput> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Analog Input", value.Index, value.Value.ToString("G"), FlagText(value.Flags), BuildSourceTimestamp(value.Time), info.Variation.ToString(), qualifier: QualifierText(info));
-            }
-        }
-
-        public void HandleFrozenAnalogInput(HeaderInfo info, ICollection<FrozenAnalogInput> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Frozen Analog Input", value.Index, value.Value.ToString("G"), FlagText(value.Flags), BuildSourceTimestamp(value.Time), info.Variation.ToString(), qualifier: QualifierText(info));
-            }
-        }
-
-        public void HandleAnalogOutputStatus(HeaderInfo info, ICollection<AnalogOutputStatus> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Analog Output Status", value.Index, value.Value.ToString("G"), FlagText(value.Flags), BuildSourceTimestamp(value.Time), info.Variation.ToString(), qualifier: QualifierText(info));
-            }
-        }
-
-        public void HandleBinaryOutputCommandEvent(HeaderInfo info, ICollection<BinaryOutputCommandEvent> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Binary Command Event", value.Index, value.CommandedState.ToString(), value.Status.ToString(), BuildSourceTimestamp(value.Time), info.Variation.ToString(), value.Status.ToString(), QualifierText(info));
-            }
-        }
-
-        public void HandleAnalogOutputCommandEvent(HeaderInfo info, ICollection<AnalogOutputCommandEvent> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Analog Command Event", value.Index, value.CommandedValue.ToString("G"), value.Status.ToString(), BuildSourceTimestamp(value.Time), info.Variation.ToString(), value.Status.ToString(), QualifierText(info));
-            }
-        }
-
-        public void HandleUnsignedInteger(HeaderInfo info, ICollection<UnsignedInteger> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Unsigned Integer", value.Index, value.Value.ToString(), "-", SourceTimestampInfo.NotSupplied("-"), info.Variation.ToString(), qualifier: QualifierText(info));
-            }
-        }
-
-        public void HandleOctetString(HeaderInfo info, ICollection<OctetString> values)
-        {
-            foreach (var value in values)
-            {
-                owner.PublishValue("Octet String", value.Index, BitConverter.ToString(value.Value.ToArray()), "-", SourceTimestampInfo.NotSupplied("-"), info.Variation.ToString(), qualifier: QualifierText(info));
-            }
-        }
-
-        public void HandleStringAttr(HeaderInfo info, StringAttr attr, byte set, byte var, string value) { }
-        public void HandleUintAttr(HeaderInfo info, UintAttr attr, byte set, byte var, uint value) { }
-        public void HandleBoolAttr(HeaderInfo info, BoolAttr attr, byte set, byte var, bool value) { }
-        public void HandleIntAttr(HeaderInfo info, IntAttr attr, byte set, byte var, int value) { }
-        public void HandleTimeAttr(HeaderInfo info, TimeAttr attr, byte set, byte var, ulong value) { }
-        public void HandleFloatAttr(HeaderInfo info, FloatAttr attr, byte set, byte var, double value) { }
-        public void HandleVariationListAttr(HeaderInfo info, VariationListAttr attr, byte set, byte var, ICollection<AttrItem> value) { }
-        public void HandleOctetStringAttr(HeaderInfo info, OctetStringAttr attr, byte set, byte var, ICollection<byte> value) { }
-        public void HandleBitStringAttr(HeaderInfo info, BitStringAttr attr, byte set, byte var, ICollection<byte> value) { }
-        public void HandleAbsTime(HeaderInfo info, Timestamp time) { }
-    }
+        TimeSpan KeepAliveTimeout);
 }

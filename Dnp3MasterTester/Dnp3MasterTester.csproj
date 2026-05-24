@@ -20,9 +20,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="dnp3" Version="1.7.0-RC1" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3967.48" />
-    <PackageReference Include="QuestPDF" Version="2026.5.0" />
     <PackageReference Include="System.IO.Ports" Version="10.0.0" />
   </ItemGroup>
 

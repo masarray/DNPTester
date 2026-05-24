@@ -3,7 +3,7 @@
 ## What this project is
 `Dnp3MasterTester` is a WPF desktop application that acts as a DNP3 master-side test and audit workspace for communicating with slave devices, especially protection relays over TCP and Serial.
 
-It is not intended to become a custom DNP3 engine. It is a thin operator/audit shell over the official Step Function IO `.NET` DNP3 library.
+It now carries a native C# DNP3 master stack for active master communication. The WPF shell remains an operator/audit workspace over `IDnp3MasterService`, without a proprietary DNP3 runtime dependency.
 
 ## What it is trying to become
 The long-term goal is a tool that is:
@@ -20,7 +20,7 @@ That means the app must do more than show raw values. It must help users answer:
 - what protocol/runtime evidence exists if behavior looks wrong?
 
 ## Current architecture in one paragraph
-The app uses a simple MVVM structure. WPF windows bind to `MainViewModel`, which owns UI collections and commands. `MainViewModel` delegates all protocol work to `Dnp3MasterService`, which wraps the Step Function DNP3 engine, creates channels/associations/polls, and translates engine callbacks into rows for `Value Viewer`, `SCADA Events`, `SOE Audit`, and `Link Trace`.
+The app uses a simple MVVM structure. WPF windows bind to `MainViewModel`, which owns UI collections and commands. `MainViewModel` delegates all protocol work to `Dnp3MasterService`, which uses the native C# protocol layer, manages transport/polls/commands, and translates decoded responses into rows for `Value Viewer`, `SCADA Events`, `SOE Audit`, and `Link Trace`.
 
 ## Current user-facing surfaces
 

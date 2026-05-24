@@ -3,7 +3,9 @@
 ## Overview
 `Dnp3MasterTester` is a WPF desktop DNP3 master-side test workspace for communicating with slave devices, especially protection relays over TCP and Serial.
 
-It is built on top of the official Step Function IO `.NET` DNP3 package and is intended to evolve into a credible FAT / interoperability / audit tool.
+It uses the native C# DNP3 master stack in this repository and is intended to evolve into a credible FAT / interoperability / audit tool without a proprietary DNP3 runtime dependency in the master application.
+
+The application source is distributed under the GNU General Public License version 3.
 
 ![Mission Control](Assets/screenshot/web/mission-control.png)
 
@@ -12,7 +14,7 @@ Current focus areas:
 - SCADA-style event journal
 - SOE / forensic callback evidence
 - protocol/runtime diagnostics
-- guided FAT report workspace and QuestPDF PDF export
+- guided FAT report workspace and internal PDF export
 
 ## Status
 The project is functional but still under active refinement.
@@ -22,7 +24,7 @@ What already exists:
 - TCP and Serial DNP3 master channels
 - connection setup dialog
 - workspace tabs for value/event/audit/trace review
-- service-based integration with official Step Function DNP3 engine
+- service-based integration with the native C# DNP3 master stack
 - real device-response evidence state, separate from open socket state
 - guided report workspace with PDF preview/export
 - command lifecycle evidence and FAT snapshot builder
@@ -36,8 +38,9 @@ What still needs major work:
 ## Technology
 - `.NET 8`
 - WPF
-- Step Function IO `dnp3` package
-- native `dnp3_ffi` payload
+- native C# DNP3 master protocol implementation
+- `System.IO.Ports` for serial transport
+- internal PDF report renderer
 
 ## Main surfaces
 
@@ -59,7 +62,7 @@ Shows protocol/runtime diagnostics and engine trace information.
 
 ### `Report Workspace`
 Guides report identity, verification steps, automated FAT evidence capture, and
-QuestPDF preview/export.
+internal PDF preview/export.
 
 ## Screenshots
 
@@ -83,7 +86,7 @@ Important files:
 - [ViewModels/MainViewModel.cs](ViewModels/MainViewModel.cs)
 - [Services/Dnp3MasterService.cs](Services/Dnp3MasterService.cs)
 - [Services/Reports/FatReportSnapshotBuilder.cs](Services/Reports/FatReportSnapshotBuilder.cs)
-- [Services/Reports/QuestPdfReportExportService.cs](Services/Reports/QuestPdfReportExportService.cs)
+- [Services/Reports/InternalPdfReportExportService.cs](Services/Reports/InternalPdfReportExportService.cs)
 
 ## Build
 
@@ -93,8 +96,8 @@ dotnet build DNPTester.slnx
 
 ## Development notes
 
-### Use the official engine only
-Do not replace the Step Function engine with a custom protocol stack.
+### Use the native master stack only
+Do not reintroduce proprietary DNP3 protocol packages into `Dnp3MasterTester` unless the product licensing direction changes.
 
 ### UI should stay passive
 The UI layer should display and organize evidence, not invent protocol behavior.
@@ -104,12 +107,10 @@ If relay changes only appear after manual integrity, treat that as a protocol/in
 
 ## Recommended reading order
 1. `AGENTS.md`
-2. `PROJECT_CONTEXT.md`
-3. `project_tree.md`
-4. `project_data_flow.md`
-5. `project_summary.md`
-6. `Services/Dnp3MasterService.cs`
-7. `MainWindow.xaml`
+2. `project_summary.md`
+3. `Services/Dnp3MasterService.cs`
+4. `Protocol/`
+5. `MainWindow.xaml`
 
 ## Goal
 The goal is to turn this repository into a DNP3 master-side relay audit tool that is:

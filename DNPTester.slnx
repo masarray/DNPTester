@@ -6,10 +6,4 @@
   <Project Path="Dnp3MasterTester\Dnp3MasterTester.csproj">
     <Platform Solution="*|x64" Project="x64" />
   </Project>
-  <Project Path="Dnp3SlaveSimulator\Dnp3SlaveSimulator.csproj">
-    <Platform Solution="*|Any CPU" Project="x64" />
-    <Platform Solution="Debug|x64" Project="x64" />
-    <Platform Solution="Release|x64" Project="x64" />
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
 </Solution>

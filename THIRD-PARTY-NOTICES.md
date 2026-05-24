@@ -1,23 +1,24 @@
 # Third-Party Notices
 
-This application can publish its own source code under the repository license, but that does not relicense third-party dependencies.
+This application source code is distributed under the GNU General Public License version 3. Third-party dependencies, runtimes, SDKs, and tooling remain governed by their own license terms.
 
-## Step Function I/O dnp3
+## DNP3 master stack
 
-- Package: `dnp3`
-- Version: `1.7.0-RC1`
-- Project: https://stepfunc.io/products/libraries/dnp3/
-- Repository metadata: https://github.com/stepfunc/dnp3.git
-- Package license file: `LICENSE.txt` inside the NuGet package
+The master tester now uses its own C# DNP3 master implementation for active
+master communication. It is not linked against or distributed with the Step
+Function I/O `dnp3` runtime in the master application.
 
-The Step Function I/O DNP3 package is a proprietary third-party dependency with its own license. The package license grants non-commercial and non-production rights unless a separate commercial/production license has been obtained from Step Function I/O.
+The protocol design was informed by public DNP3 materials, IEEE/DNP-UG protocol
+concepts, and permissive public references such as OpenDNP3. Do not copy
+proprietary DNP3 implementation code into this repository.
 
-Do not describe the DNP3 library itself as MIT/open-source. Do not distribute a production installer that includes the DNP3 library unless the applicable Step Function I/O license permits that distribution.
+The previous third-party slave simulator and local vendor reference tree have
+been removed from this repository.
 
 ## Other Dependencies
 
-This project also uses third-party packages such as Microsoft WebView2, QuestPDF, and System.IO.Ports. Their license files are provided by their NuGet packages and should be preserved in distribution review.
+This project uses System.IO.Ports for serial transport. Its license files are provided by its NuGet package and should be preserved in distribution review.
 
 ## Installer Compliance Note
 
-The Inno Setup build packages the application output. Before public or commercial distribution, review all files in the release output and confirm that each dependency license allows the intended use and redistribution.
+The Inno Setup build packages the application output. Before public distribution, rebuild from the current GPL-3 source tree and review all files in the release output so stale artifacts are not shipped.

@@ -1,5 +1,4 @@
 using Dnp3MasterTester.Models;
-using dnp3;
 
 namespace Dnp3MasterTester.Services;
 

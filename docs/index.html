@@ -271,7 +271,7 @@
               <img src="assets/screenshots/report-preview.png" width="1920" height="1032" alt="Report workspace PDF preview screenshot" loading="lazy" decoding="async" />
             </button>
             <h3>Report Workspace</h3>
-            <p>Guided FAT flow with QuestPDF preview and export-ready evidence.</p>
+            <p>Guided FAT flow with internal PDF preview and export-ready evidence.</p>
           </article>
           <article class="reveal delay-1 interactive-surface screen-card">
             <button class="screen-frame zoom-trigger" type="button" data-full="assets/screenshots/scada-events.png" data-title="SCADA Events">
@@ -323,7 +323,7 @@
           </div>
           <div class="evidence-card reveal delay-2 interactive-surface">
             <strong>PDF evidence</strong>
-            <span>Preview and export use the same QuestPDF render path.</span>
+            <span>Preview and export use the same internal PDF render path.</span>
           </div>
         </div>
       </section>
@@ -369,10 +369,11 @@
           <p class="eyebrow">Open-source readiness</p>
           <h2>Application source and third-party protocol stack are documented separately.</h2>
           <p>
-            The application source can be published under the repository license,
-            but third-party dependencies remain governed by their own terms. The
-            Step Function I/O DNP3 library must be reviewed separately before
-            commercial or production distribution.
+            The application source is published under the GNU General Public
+            License version 3.
+            The master tester uses the native C# DNP3 master stack included in
+            this repository. The previous third-party slave simulator and local
+            vendor reference tree have been removed from this repository.
           </p>
         </div>
         <div class="notice reveal delay-1">

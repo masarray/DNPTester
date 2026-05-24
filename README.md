@@ -61,7 +61,7 @@ test, explain, troubleshoot, and report what happened.
 | SOE Audit | Forensic event table with source timestamp status, class, variation, qualifier, broadcast flag, and source reason. |
 | Link Trace | Protocol and task trace view for troubleshooting poll, response, and engine behavior. |
 | Command Testing | Binary output test workflow with lifecycle evidence and feedback matching. |
-| Report Workspace | Guided FAT evidence flow and QuestPDF preview/export path. |
+| Report Workspace | Guided FAT evidence flow and internal PDF preview/export path. |
 | About | License, maintainer, and third-party DNP3 engine compliance notes. |
 
 ## Evidence-first reporting
@@ -79,7 +79,7 @@ actually captured:
 - protocol trace extracts for troubleshooting context
 - report identity fields and logo support
 
-Preview and export use the same QuestPDF render path, so the PDF preview is
+Preview and export use the same internal PDF render path, so the PDF preview is
 intended to match the exported report instead of being a separate mock screen.
 
 ## Screenshots
@@ -131,10 +131,11 @@ Windows installers are published through GitHub Releases:
 
 ## Compliance note
 
-This repository can publish the application source under its own license, but
-third-party dependencies remain governed by their own terms. In particular, the
-Step Function I/O DNP3 package must be reviewed separately before commercial or
-production distribution.
+This repository publishes the application source under the GNU General Public
+License version 3. The master tester uses the native C# DNP3 master stack included in this repository.
+The legacy third-party slave simulator and local vendor reference tree have
+been removed from the repository. The report exporter uses the repository's
+internal PDF renderer.
 
 Read:
 
