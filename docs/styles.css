@@ -36,44 +36,13 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 80% 6%, rgba(19, 160, 170, 0.15), transparent 30%),
-    radial-gradient(circle at 10% 18%, rgba(207, 45, 24, 0.10), transparent 24%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(244, 248, 251, 0.98)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 248, 251, 0.98)),
     var(--bg);
   color: var(--ink);
   font-family: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-weight: 400;
   line-height: 1.68;
-  letter-spacing: -0.01em;
-}
-
-body::before,
-body::after {
-  content: "";
-  position: fixed;
-  z-index: -2;
-  pointer-events: none;
-  border-radius: 999px;
-  filter: blur(14px);
-  opacity: 0.72;
-}
-
-body::before {
-  width: 520px;
-  height: 520px;
-  right: -180px;
-  top: 110px;
-  background: radial-gradient(circle, rgba(11, 118, 131, 0.16), transparent 68%);
-  animation: orbBreathe 12s var(--ease) infinite;
-}
-
-body::after {
-  width: 420px;
-  height: 420px;
-  left: -190px;
-  bottom: 14%;
-  background: radial-gradient(circle, rgba(180, 138, 66, 0.15), transparent 66%);
-  animation: orbBreathe 15s var(--ease) infinite reverse;
+  letter-spacing: 0;
 }
 
 a {
@@ -99,33 +68,6 @@ section[id] {
   background-size: 44px 44px;
   mask-image: linear-gradient(180deg, #000 0%, transparent 82%);
   animation: gridDrift 22s linear infinite;
-}
-
-.ambient-orb {
-  position: fixed;
-  z-index: -2;
-  pointer-events: none;
-  border-radius: 999px;
-  opacity: 0.5;
-  filter: blur(22px);
-}
-
-.orb-one {
-  width: 260px;
-  height: 260px;
-  top: 14%;
-  left: 54%;
-  background: rgba(19, 160, 170, 0.13);
-  animation: driftOne 14s var(--ease) infinite alternate;
-}
-
-.orb-two {
-  width: 190px;
-  height: 190px;
-  right: 12%;
-  bottom: 16%;
-  background: rgba(207, 45, 24, 0.10);
-  animation: driftTwo 16s var(--ease) infinite alternate;
 }
 
 .site-header {
@@ -175,14 +117,14 @@ section[id] {
   color: var(--ink-strong);
   font-size: 14px;
   font-weight: 690;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
 }
 
 .brand small {
   color: var(--muted);
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .nav-links {
@@ -254,7 +196,7 @@ main {
   color: var(--accent-dark);
   font-size: 12px;
   font-weight: 650;
-  letter-spacing: 0.09em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -275,18 +217,18 @@ h3 {
 h1 {
   max-width: 780px;
   margin-bottom: 24px;
-  font-size: clamp(44px, 6vw, 74px);
+  font-size: 64px;
   font-weight: 735;
   line-height: 0.99;
-  letter-spacing: -0.062em;
+  letter-spacing: 0;
 }
 
 h2 {
   margin-bottom: 18px;
-  font-size: clamp(29px, 4vw, 47px);
+  font-size: 42px;
   font-weight: 675;
   line-height: 1.08;
-  letter-spacing: -0.046em;
+  letter-spacing: 0;
 }
 
 h3 {
@@ -294,7 +236,7 @@ h3 {
   font-size: 19px;
   font-weight: 650;
   line-height: 1.25;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
 }
 
 p {
@@ -304,10 +246,10 @@ p {
 .lead,
 .section-heading p {
   color: var(--muted);
-  font-size: clamp(17px, 1.8vw, 20px);
+  font-size: 19px;
   font-weight: 420;
   line-height: 1.78;
-  letter-spacing: -0.018em;
+  letter-spacing: 0;
 }
 
 .hero-actions {
@@ -330,7 +272,7 @@ p {
   padding: 13px 18px;
   font-size: 14px;
   font-weight: 610;
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
   text-decoration: none;
   transform: translate3d(var(--tx, 0), calc(var(--ty, 0) + var(--lift, 0px)), 0) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) scale(var(--scale, 1));
   transition:
@@ -479,7 +421,7 @@ p {
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   padding: 8px 11px;
   box-shadow: 0 8px 22px rgba(12, 31, 48, 0.045);
 }
@@ -567,7 +509,7 @@ p {
   color: #fff;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   padding: 7px 10px;
   opacity: 0;
   transform: translateY(-6px) scale(0.96);
@@ -800,7 +742,7 @@ p {
   margin-bottom: 10px;
   color: var(--ink-strong);
   font-weight: 650;
-  letter-spacing: -0.018em;
+  letter-spacing: 0;
 }
 
 .split,
@@ -1070,25 +1012,6 @@ p {
   }
 }
 
-@keyframes orbBreathe {
-  0%, 100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(-18px, 14px, 0) scale(1.08);
-  }
-}
-
-@keyframes driftOne {
-  from { transform: translate3d(-18px, 0, 0) scale(0.96); }
-  to { transform: translate3d(24px, 34px, 0) scale(1.08); }
-}
-
-@keyframes driftTwo {
-  from { transform: translate3d(20px, 12px, 0) scale(1); }
-  to { transform: translate3d(-30px, -22px, 0) scale(1.06); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1136,6 +1059,14 @@ p {
     padding-top: 52px;
   }
 
+  h1 {
+    font-size: 52px;
+  }
+
+  h2 {
+    font-size: 36px;
+  }
+
   .value-grid,
   .use-grid,
   .evidence-grid {
@@ -1168,7 +1099,16 @@ p {
 
   h1 {
     font-size: 40px;
-    letter-spacing: -0.052em;
+    letter-spacing: 0;
+  }
+
+  h2 {
+    font-size: 31px;
+  }
+
+  .lead,
+  .section-heading p {
+    font-size: 17px;
   }
 
   .value-grid,

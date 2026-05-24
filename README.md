@@ -62,7 +62,7 @@ test, explain, troubleshoot, and report what happened.
 | Link Trace | Protocol and task trace view for troubleshooting poll, response, and engine behavior. |
 | Command Testing | Binary output test workflow with lifecycle evidence and feedback matching. |
 | Report Workspace | Guided FAT evidence flow and internal PDF preview/export path. |
-| About | License, maintainer, and third-party DNP3 engine compliance notes. |
+| About | License, maintainer, and native DNP3 master stack notes. |
 
 ## Evidence-first reporting
 
