@@ -131,11 +131,10 @@ Windows installers are published through GitHub Releases:
 
 ## Compliance note
 
-This repository publishes the application source under the GNU General Public
-License version 3. The master tester uses the native C# DNP3 master stack included in this repository.
-The legacy third-party slave simulator and local vendor reference tree have
-been removed from the repository. The report exporter uses the repository's
-internal PDF renderer.
+This repository publishes the application source under the Apache License,
+Version 2.0. The master tester uses the native C# DNP3 master stack included in
+this repository, and the report exporter uses the repository's internal PDF
+renderer.
 
 Read:
 

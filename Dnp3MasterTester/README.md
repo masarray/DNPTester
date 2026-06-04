@@ -5,7 +5,7 @@
 
 It uses the native C# DNP3 master stack in this repository and is intended to evolve into a credible FAT / interoperability / audit tool without a proprietary DNP3 runtime dependency in the master application.
 
-The application source is distributed under the GNU General Public License version 3.
+The application source is distributed under the Apache License, Version 2.0.
 
 ![Mission Control](Assets/screenshot/web/mission-control.png)
 

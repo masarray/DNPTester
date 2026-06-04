@@ -1019,7 +1019,7 @@
                                         CornerRadius="8"
                                         Padding="28">
                                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="560">
-                                        <TextBlock Text="PDF rendered with the internal GPL-3 report engine"
+                                        <TextBlock Text="PDF rendered with the internal report engine"
                                                    FontSize="18"
                                                    FontWeight="SemiBold"
                                                    TextAlignment="Center"
@@ -1312,7 +1312,7 @@
                                             <TextBlock Text="Author / maintainer" FontWeight="SemiBold" />
                                             <TextBlock Grid.Column="1" Text="MasArray" TextWrapping="Wrap" />
                                             <TextBlock Grid.Row="1" Margin="0,10,0,0" Text="Application license" FontWeight="SemiBold" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" Text="GNU General Public License version 3 for this application's own source code, excluding third-party dependencies and system/runtime components." TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" Text="Apache License, Version 2.0 for this application's own source code, excluding third-party dependencies and system/runtime components." TextWrapping="Wrap" />
                                             <TextBlock Grid.Row="2" Margin="0,10,0,0" Text="DNP3 dependency" FontWeight="SemiBold" />
                                             <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,10,0,0" Text="Native C# DNP3 master stack." TextWrapping="Wrap" />
                                             <TextBlock Grid.Row="3" Margin="0,10,0,0" Text="Distribution note" FontWeight="SemiBold" />

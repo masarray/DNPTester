@@ -7,7 +7,7 @@ desktop application.
 
 Current positioning:
 
-- GPL-3 source tree
+- Apache-2.0 source tree
 - Native C# DNP3 master stack
 - Internal PDF evidence report engine
 - Windows desktop app for SCADA/FAT troubleshooting
