@@ -1,0 +1,35 @@
+name: Application CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dnp-tester-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore application
+        run: dotnet restore Dnp3MasterTester/Dnp3MasterTester.csproj
+
+      - name: Build application
+        run: dotnet build Dnp3MasterTester/Dnp3MasterTester.csproj -c Debug --no-restore -p:ContinuousIntegrationBuild=true
